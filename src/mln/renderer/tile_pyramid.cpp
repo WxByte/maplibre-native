@@ -127,9 +127,10 @@ void TilePyramid::update(const std::vector<Immutable<style::LayerProperties>>& l
         .tileLodPitchThreshold = parameters.tileLodPitchThreshold,
         .tileLodMode = parameters.tileLodMode,
         .requestedZoom = zoom + util::log2(util::tileSize_D / tileSize),
-        // A DEM rounds as raster does, except under terrain, whose cover floors it (feature/terrain-3d)
+        // A DEM rounds as raster does, except under terrain (an elevation provider), whose cover floors it
+        // (feature/terrain-3d)
         .roundZoom = type == SourceType::Raster || type == SourceType::Video ||
-                     (type == SourceType::RasterDEM && !parameters.terrain),
+                     (type == SourceType::RasterDEM && !parameters.elevationProvider),
         .elevationProvider = parameters.elevationProvider};
 
     if (std::cmp_greater_equal(overscaledZoom, zoomRange.min)) {

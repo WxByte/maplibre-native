@@ -1032,7 +1032,9 @@ std::unique_ptr<gfx::Drawable> RenderTerrain::createDrawableForTile(gfx::Context
     }
 
     // Get terrain shader
-    auto terrainShader = context.getGenericShader(shaders, depthPass ? "TerrainDepthShader" : "TerrainShader");
+    // Terrain is mercator only for now (map_impl.cpp)
+    auto terrainShader = context.getGenericShader(
+        shaders, depthPass ? "TerrainDepthShader" : "TerrainShader", gfx::ProjectionVariant::Mercator);
     if (!terrainShader) {
         // The depth shader is not registered on all backends yet; symbols
         // then sample the far-plane placeholder and stay visible
@@ -1204,7 +1206,7 @@ void RenderTerrain::rebuildInstancedDepthDrawable(gfx::Context& context, gfx::Sh
     if (depthMeshRef.vertices.empty() || depthMeshRef.indices.empty()) {
         return;
     }
-    auto shader = context.getGenericShader(shaders, "TerrainDepthShader");
+    auto shader = context.getGenericShader(shaders, "TerrainDepthShader", gfx::ProjectionVariant::Mercator);
     if (!shader) {
         return;
     }

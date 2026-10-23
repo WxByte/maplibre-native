@@ -117,6 +117,7 @@ StyleParseResult Parser::parse(const std::string& json) {
 
     if (document.HasMember("projection")) {
         parseProjection(document["projection"]);
+    }
 
     if (document.HasMember("terrain")) {
         parseTerrain(document["terrain"]);
@@ -258,6 +259,7 @@ void Parser::parseProjection(const JSValue& value) {
         return;
     }
     projection = *converted;
+}
 
 void Parser::parseTerrain(const JSValue& value) {
     conversion::Error error;

@@ -365,6 +365,7 @@ void Style::Impl::setProjection(std::unique_ptr<Projection> projection_) {
 
 Projection* Style::Impl::getProjection() const {
     return projection.get();
+}
 
 void Style::Impl::setTerrain(std::unique_ptr<Terrain> terrain_) {
     terrain = std::move(terrain_);
@@ -555,6 +556,8 @@ void Style::Impl::onLightChanged(const Light&) {
 }
 
 void Style::Impl::onProjectionChanged(const Projection&) {
+    observer->onUpdate();
+}
 
 void Style::Impl::onTerrainChanged(const Terrain&) {
     observer->onUpdate();

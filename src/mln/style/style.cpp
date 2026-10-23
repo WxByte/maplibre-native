@@ -108,6 +108,7 @@ Projection* Style::getProjection() {
 
 const Projection* Style::getProjection() const {
     return impl->getProjection();
+}
 
 void Style::setTerrain(std::unique_ptr<Terrain> terrain) {
     impl->setTerrain(std::move(terrain));

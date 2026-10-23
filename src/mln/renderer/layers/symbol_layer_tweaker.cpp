@@ -244,10 +244,6 @@ void SymbolLayerTweaker::execute(LayerGroupBase& layerGroup, const PaintParamete
             .pad1 = 0,
             .pad2 = 0,
 
-            .pad1 = 0,
-            .pad2 = 0,
-            .pad3 = 0,
-
             .dem_coords = terrainData ? terrainData->demCoords : std::array<float, 4>{{0, 0, 0, 0}},
             .dem_unpack = parameters.terrain ? parameters.terrain->getDEMUnpackVector()
                                              : std::array<float, 4>{{0, 0, 0, 0}},

@@ -268,11 +268,11 @@ void FillExtrusionBucket::addFeature(const GeometryTileFeature& feature,
         // The roof's triangles index only its own vertices, so it continues the walls' segment or starts its own.
         const std::size_t roofStart = vertices.elements();
         if (roof) {
-            const auto roofVertex = [](int16_t x, int16_t y) {
+            const auto roofVertex = [centroid](int16_t x, int16_t y) {
 #if MLN_USE_FILL_EXTRUSION_INSTANCING
-                return FillExtrusionBucket::layoutVertex(Point<double>(x, y), 0, true);
+                return FillExtrusionBucket::layoutVertex(Point<double>(x, y), 0, true, centroid);
 #else
-                return FillExtrusionBucket::layoutVertex(Point<double>(x, y), 0, 0, 1, 0);
+                return FillExtrusionBucket::layoutVertex(Point<double>(x, y), 0, 0, 1, 0, centroid);
 #endif
             };
             gfx::fillLargeMeshArrays(

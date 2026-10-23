@@ -157,10 +157,8 @@ apple_xcframework(
     ],
     infoplists = ["info_plist"],
     ios = {
-        "simulator": [
-            "x86_64",
-            "arm64",
-        ],
+        # SatSquatch: Apple silicon simulators only
+        "simulator": ["arm64"],
         "device": ["arm64"],
     },
     # With --//:plugins=true, plugins outside this binary call the C entry point.
