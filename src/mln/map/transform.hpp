@@ -141,6 +141,11 @@ public:
     LatLng screenCoordinateToLatLng(const ScreenCoordinate&, LatLng::WrapMode = LatLng::Wrapped) const;
     bool isLocationOccluded(const LatLng& latLng) const { return state.isLocationOccluded(latLng); }
 
+    /// As above, unprojecting onto the plane `elevationMeters` above sea level.
+    LatLng screenCoordinateToLatLng(const ScreenCoordinate&,
+                                    double elevationMeters,
+                                    LatLng::WrapMode = LatLng::Wrapped) const;
+
     FreeCameraOptions getFreeCameraOptions() const;
     void setFreeCameraOptions(const FreeCameraOptions& options);
 

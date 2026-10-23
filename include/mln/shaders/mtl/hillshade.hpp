@@ -79,12 +79,14 @@ struct FragmentStage {
 
 FragmentStage vertex vertexMain(thread const VertexStage vertx [[stage_in]],
                                 device const uint32_t& uboIndex [[buffer(idGlobalUBOIndex)]],
+                                device const GlobalPaintParamsUBO& paintParams [[buffer(idGlobalPaintParamsUBO)]],
                                 device const HillshadeDrawableUBO* drawableVector [[buffer(idHillshadeDrawableUBO)]],
                                 device const ProjectionUBO* projectionVector [[buffer(idProjectionUBO)]]) {
 
     device const HillshadeDrawableUBO& drawable = drawableVector[uboIndex];
 
-    const float4 position = projectTile(float2(vertx.pos), float2(vertx.pos), projectionVector[uboIndex]);
+    float4 rawPosition = projectTile(float2(vertx.pos), float2(vertx.pos), projectionVector[uboIndex]);
+    const float4 position = apply_drape_transform(rawPosition, drawable.matrix, paintParams.drape_tile);
     float2 pos = float2(vertx.texture_pos) / 8192.0;
     // Metal's texture coordinate origin differs from some renderers;
     // restore Y-flip to match prepare pass and historical behavior.
@@ -232,7 +234,11 @@ half4 fragment fragmentMain(FragmentStage in [[stage_in]],
     device const HillshadeTilePropsUBO& tileProps = tilePropsVector[uboIndex];
     thread half4 fragColor;
 
-    float4 pixel = image.sample(image_sampler, in.pos);
+    // The prepare target carries a 1px ring of derivatives from outside the tile, so that
+    // bilinear filtering at the tile edge blends against a real neighbour. Inset past it.
+    const float2 size = float2(image.get_width(), image.get_height());
+    const float2 texturePos = (in.pos * (size - 2.0) + 1.0) / size;
+    float4 pixel = image.sample(image_sampler, texturePos);
 
     // Scale the derivative based on the mercator distortion at this latitude
     float latitude = (tileProps.latrange.x - tileProps.latrange.y) * in.pos.y + tileProps.latrange.y;

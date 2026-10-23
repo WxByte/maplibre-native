@@ -141,7 +141,7 @@ public:
                 .gapwidth_t = 0.f,
                 .offset_t = 0.f,
                 .width_t = 0.f,
-                .pad1 = 0
+                .pad1 = 0.f
             };
 
 #if MLN_UBO_CONSOLIDATION
@@ -251,7 +251,7 @@ void TileSourceRenderItem::updateDebugDrawables(DebugLayerGroupMap& debugLayerGr
             auto inserted = debugLayerGroups.insert(
                 std::make_pair(type,
                                context.createTileLayerGroup(
-                                   static_cast<int32_t>(type), /*initialCapacity=*/64, std::move(layerName))));
+                                   static_cast<int32_t>(type), /*initialCapacity=*/64, std::move(layerName), true)));
             assert(inserted.second);
             it = inserted.first;
         }
@@ -685,6 +685,13 @@ RenderTileSetSource::RenderTileSetSource(Immutable<style::Source::Impl> impl_, c
     : RenderTileSource(std::move(impl_), threadPool_) {}
 
 RenderTileSetSource::~RenderTileSetSource() = default;
+
+uint16_t RenderTileSetSource::resolveTileSize(uint16_t declared) const {
+    if (cachedTileset && cachedTileset->tileSize) {
+        return *cachedTileset->tileSize;
+    }
+    return declared;
+}
 
 uint8_t RenderTileSetSource::getMaxZoom() const {
     return cachedTileset ? cachedTileset->zoomRange.max : util::TERRAIN_RGB_MAXZOOM;

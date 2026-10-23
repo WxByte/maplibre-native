@@ -52,9 +52,19 @@ public:
 
     void updateProperties(Immutable<style::LayerProperties>);
 
+    /// Bumped whenever any layer's evaluated properties change. RenderLayer::evaluate
+    /// (the only caller of updateProperties) runs solely on a style edit, a zoom change
+    /// the layer depends on, a crossfade, or a running transition - never during a plain
+    /// pan - which makes this a precise invalidation signal for content cached from
+    /// evaluated properties, as maplibre-gl-js does with invalidateRenderCache.
+    /// See RenderTarget::render, which caches each terrain drape target's texture.
+    static uint64_t getPropertiesEpoch() { return propertiesEpoch; }
+
     /// Calculate matrices for this tile.
     /// @param nearClipped If true, the near plane is moved further to enhance depth buffer precision.
     /// @param inViewportPixelUnits If false, the translation is scaled based on the current zoom.
+    /// @param renderingToTerrain If provided, set to whether the returned matrix targets a
+    /// terrain render-to-texture tile instead of the map projection.
     static mat4 getTileMatrix(const UnwrappedTileID&,
                               const PaintParameters&,
                               const std::array<float, 2>& translation,
@@ -62,7 +72,9 @@ public:
                               bool nearClipped,
                               bool inViewportPixelUnits,
                               const gfx::Drawable& drawable,
-                              bool aligned = false);
+                              bool aligned = false,
+                              bool renderToTerrain = true,
+                              bool* renderingToTerrain = nullptr);
 
     static mat4 getTileMatrix(const UnwrappedTileID& tileID,
                               const TransformState& transformState,
@@ -79,6 +91,9 @@ public:
                               bool aligned);
 
     /// The projection contract for this tile: `getTileMatrix` plus the per-tile projection fields.
+    /// @param renderToTerrain Whether the layer drapes over 3D terrain: then, while there is terrain (mercator
+    /// only), the projection is the tile's drape target matrix (`getTileMatrix`). Off by default, unlike
+    /// `getTileMatrix`'s: only the draped layers ask for it.
     static ProjectionData getProjectionData(const UnwrappedTileID&,
                                             const PaintParameters&,
                                             const std::array<float, 2>& translation,
@@ -86,7 +101,9 @@ public:
                                             bool nearClipped,
                                             bool inViewportPixelUnits,
                                             const gfx::Drawable& drawable,
-                                            bool aligned = false);
+                                            bool aligned = false,
+                                            bool renderToTerrain = false,
+                                            bool* renderingToTerrain = nullptr);
 
     static shaders::ProjectionUBO toProjectionUBO(const ProjectionData&);
 
@@ -126,6 +143,10 @@ protected:
 
     // Indicates that the evaluated properties have changed
     bool propertiesUpdated = true;
+
+    // See getPropertiesEpoch. Rendering is single-threaded per frame; multiple maps
+    // in one process share the counter, which only over-invalidates (never stales).
+    static uint64_t propertiesEpoch;
 };
 
 } // namespace mln

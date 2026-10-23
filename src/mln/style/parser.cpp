@@ -6,6 +6,8 @@
 #include <mln/style/conversion/layer.hpp>
 #include <mln/style/conversion/light.hpp>
 #include <mln/style/conversion/projection.hpp>
+
+#include <mln/style/conversion/terrain.hpp>
 #include <mln/style/conversion/sprite.hpp>
 #include <mln/style/conversion/transition_options.hpp>
 #include <mln/style/conversion_impl.hpp>
@@ -115,6 +117,9 @@ StyleParseResult Parser::parse(const std::string& json) {
 
     if (document.HasMember("projection")) {
         parseProjection(document["projection"]);
+
+    if (document.HasMember("terrain")) {
+        parseTerrain(document["terrain"]);
     }
 
     if (document.HasMember("state")) {
@@ -253,6 +258,16 @@ void Parser::parseProjection(const JSValue& value) {
         return;
     }
     projection = *converted;
+
+void Parser::parseTerrain(const JSValue& value) {
+    conversion::Error error;
+    std::optional<Terrain> converted = conversion::convert<Terrain>(value, error);
+    if (!converted) {
+        Log::Warning(Event::ParseStyle, error.message);
+        return;
+    }
+
+    terrain = *converted;
 }
 
 namespace {

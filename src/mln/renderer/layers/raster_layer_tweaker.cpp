@@ -86,7 +86,8 @@ void RasterLayerTweaker::execute([[maybe_unused]] LayerGroupBase& layerGroup,
                                                   false,
                                                   false,
                                                   drawable,
-                                                  !parameters.state.isChanging());
+                                                  !parameters.state.isChanging(),
+                                                  /*renderToTerrain=*/true);
         const auto& matrix = projection.fallbackMatrix;
 #if MLN_UBO_CONSOLIDATION
         projectionUBOVector[i] = toProjectionUBO(projection);

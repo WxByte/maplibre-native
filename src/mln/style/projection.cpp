@@ -68,12 +68,13 @@ StyleProperty Projection::getProperty(const std::string& name) const {
     return {};
 }
 
+bool Projection::Impl::canShowGlobe() const {
+    return !type.isUndefined() &&
+           !(type.isConstant() && type.asConstant() == ProjectionDefinition(ProjectionType::Mercator));
+}
+
 SubdivisionGranularitySetting Projection::Impl::getSubdivisionGranularity() const {
-    if (type.isUndefined() ||
-        (type.isConstant() && type.asConstant() == ProjectionDefinition(ProjectionType::Mercator))) {
-        return SubdivisionGranularitySetting::none();
-    }
-    return SubdivisionGranularitySetting::globe();
+    return canShowGlobe() ? SubdivisionGranularitySetting::globe() : SubdivisionGranularitySetting::none();
 }
 
 ProjectionDefinition Projection::Impl::evaluate(float zoom) const {

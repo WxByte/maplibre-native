@@ -227,8 +227,17 @@ void LineLayerTweaker::execute(LayerGroupBase& layerGroup, const PaintParameters
         const auto anchor = evaluated.get<LineTranslateAnchor>();
         constexpr bool nearClipped = false;
         constexpr bool inViewportPixelUnits = false; // from RenderTile::translatedMatrix
-        const auto projection = getProjectionData(
-            tileID, parameters, translation, anchor, nearClipped, inViewportPixelUnits, drawable);
+        bool renderingToTerrain = false;
+        const auto projection = getProjectionData(tileID,
+                                                  parameters,
+                                                  translation,
+                                                  anchor,
+                                                  nearClipped,
+                                                  inViewportPixelUnits,
+                                                  drawable,
+                                                  /*aligned=*/false,
+                                                  /*renderToTerrain=*/true,
+                                                  &renderingToTerrain);
         const auto& matrix = projection.fallbackMatrix;
 #if MLN_UBO_CONSOLIDATION
         projectionUBOVector[i] = toProjectionUBO(projection);
@@ -256,7 +265,7 @@ void LineLayerTweaker::execute(LayerGroupBase& layerGroup, const PaintParameters
                     .gapwidth_t = std::get<0>(binders->get<LineGapWidth>()->interpolationFactor(zoom)),
                     .offset_t = std::get<0>(binders->get<LineOffset>()->interpolationFactor(zoom)),
                     .width_t = std::get<0>(binders->get<LineWidth>()->interpolationFactor(zoom)),
-                    .pad1 = 0
+                    .pad1 = renderingToTerrain ? 1.0f : 0.0f
                 };
 
 #if !MLN_UBO_CONSOLIDATION

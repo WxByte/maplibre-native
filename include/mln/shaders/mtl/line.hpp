@@ -31,7 +31,7 @@ struct alignas(16) LineDrawableUBO {
     /* 80 */ float gapwidth_t;
     /* 84 */ float offset_t;
     /* 88 */ float width_t;
-    /* 92 */ float pad1;
+    /* 92 */ float pad1; // Reused padding slot to flag terrain render-to-texture tiles
     /* 96 */
 };
 static_assert(sizeof(LineDrawableUBO) == 6 * 16, "wrong size");
@@ -301,10 +301,13 @@ FragmentStage vertex vertexMain(thread const VertexStage vertx [[stage_in]],
     const float4 projected_extrude = position - projected_no_extrude;
 #else
     const float4 projected_extrude = drawable.matrix * float4(dist / drawable.ratio, 0.0, 0.0);
-    const float4 position = drawable.matrix * float4(pos + offset2 / drawable.ratio, 0.0, 1.0) + projected_extrude;
+    float4 rawPosition = drawable.matrix * float4(pos + offset2 / drawable.ratio, 0.0, 1.0) + projected_extrude;
+    const float4 position = apply_drape_transform(rawPosition, drawable.matrix, paintParams.drape_tile);
 #endif
 
-    // calculate how much the perspective view squishes or stretches the extrude
+    // calculate how much the perspective view squishes or stretches the extrude.
+    // A value of 1.0 is used when drawn into a terrain render-to-texture tile with an
+    // orthographic matrix; perspective scaling happens when the terrain mesh is projected
     const float extrude_length_without_perspective = length(dist);
     const float extrude_length_with_perspective = length(projected_extrude.xy / position.w * paintParams.units_to_pixels);
 
@@ -315,7 +318,9 @@ FragmentStage vertex vertexMain(thread const VertexStage vertx [[stage_in]],
 #endif
         .width2      = float2(outset, inset),
         .normal      = v_normal,
-        .gamma_scale = half(extrude_length_without_perspective / extrude_length_with_perspective),
+        .gamma_scale = drawable.pad1 != 0.0
+                           ? half(1.0)
+                           : half(extrude_length_without_perspective / extrude_length_with_perspective),
 
 #if !defined(HAS_UNIFORM_u_color)
         .color       = unpack_mix_color(vertx.color,   drawable.color_t),
@@ -497,7 +502,8 @@ FragmentStage vertex vertexMain(thread const VertexStage vertx [[stage_in]],
     const float4 projected_extrude = position - projected_no_extrude;
 #else
     const float4 projected_extrude = drawable.matrix * float4(dist / drawable.ratio, 0.0, 0.0);
-    const float4 position = drawable.matrix * float4(pos + offset2 / drawable.ratio, 0.0, 1.0) + projected_extrude;
+    float4 rawPosition = drawable.matrix * float4(pos + offset2 / drawable.ratio, 0.0, 1.0) + projected_extrude;
+    const float4 position = apply_drape_transform(rawPosition, drawable.matrix, paintParams.drape_tile);
 #endif
 
     // calculate how much the perspective view squishes or stretches the extrude
@@ -707,7 +713,8 @@ FragmentStage vertex vertexMain(thread const VertexStage vertx [[stage_in]],
     const float4 projected_extrude = position - projected_no_extrude;
 #else
     const float4 projected_extrude = drawable.matrix * float4(dist / drawable.ratio, 0.0, 0.0);
-    const float4 position = drawable.matrix * float4(pos + offset2 / drawable.ratio, 0.0, 1.0) + projected_extrude;
+    float4 rawPosition = drawable.matrix * float4(pos + offset2 / drawable.ratio, 0.0, 1.0) + projected_extrude;
+    const float4 position = apply_drape_transform(rawPosition, drawable.matrix, paintParams.drape_tile);
 #endif
 
     // calculate how much the perspective view squishes or stretches the extrude
@@ -976,7 +983,8 @@ FragmentStage vertex vertexMain(thread const VertexStage vertx [[stage_in]],
     const float4 projected_extrude = position - projected_no_extrude;
 #else
     const float4 projected_extrude = drawable.matrix * float4(dist / drawable.ratio, 0.0, 0.0);
-    const float4 position = drawable.matrix * float4(pos + offset2 / drawable.ratio, 0.0, 1.0) + projected_extrude;
+    float4 rawPosition = drawable.matrix * float4(pos + offset2 / drawable.ratio, 0.0, 1.0) + projected_extrude;
+    const float4 position = apply_drape_transform(rawPosition, drawable.matrix, paintParams.drape_tile);
 #endif
 
     // calculate how much the perspective view squishes or stretches the extrude

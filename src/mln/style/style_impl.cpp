@@ -37,6 +37,8 @@ Style::Impl::Impl(std::shared_ptr<FileSource> fileSource_, float pixelRatio, con
       spriteLoader(std::make_unique<SpriteLoader>(pixelRatio, threadPool_)),
       light(std::make_unique<Light>()),
       projection(std::make_unique<Projection>()),
+
+      terrain(nullptr),
       observer(&nullObserver) {
     spriteLoader->setObserver(this);
     light->setObserver(this);
@@ -132,6 +134,12 @@ void Style::Impl::parse(const std::string& json_) {
 
     setLight(std::make_unique<Light>(parser.light));
     setProjection(std::make_unique<Projection>(parser.projection));
+
+    if (parser.terrain) {
+        setTerrain(std::make_unique<Terrain>(*parser.terrain));
+    } else {
+        setTerrain(nullptr);
+    }
 
     if (fileSource) {
         if (parser.sprites.empty()) {
@@ -357,6 +365,19 @@ void Style::Impl::setProjection(std::unique_ptr<Projection> projection_) {
 
 Projection* Style::Impl::getProjection() const {
     return projection.get();
+
+void Style::Impl::setTerrain(std::unique_ptr<Terrain> terrain_) {
+    terrain = std::move(terrain_);
+    if (terrain) {
+        terrain->setObserver(this);
+        onTerrainChanged(*terrain);
+    } else {
+        observer->onUpdate();
+    }
+}
+
+Terrain* Style::Impl::getTerrain() const {
+    return terrain.get();
 }
 
 std::string Style::Impl::getName() const {
@@ -534,6 +555,8 @@ void Style::Impl::onLightChanged(const Light&) {
 }
 
 void Style::Impl::onProjectionChanged(const Projection&) {
+
+void Style::Impl::onTerrainChanged(const Terrain&) {
     observer->onUpdate();
 }
 

@@ -147,7 +147,9 @@ void RendererBackend::initShaders(gfx::ShaderRegistry& shaders, const ProgramPar
                   shaders::BuiltIn::RasterShader,
                   shaders::BuiltIn::SymbolIconShader,
                   shaders::BuiltIn::SymbolSDFShader,
-                  shaders::BuiltIn::SymbolTextAndIconShader>(shaders, programParameters);
+                  shaders::BuiltIn::SymbolTextAndIconShader,
+                  shaders::BuiltIn::TerrainShader,
+                  shaders::BuiltIn::TerrainDepthShader>(shaders, programParameters);
     if constexpr (util::GLOBE_ENABLED) {
         registerTypes<shaders::BuiltIn::GlobeDepthShader>(shaders, programParameters);
     }

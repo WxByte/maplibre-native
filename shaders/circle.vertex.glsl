@@ -27,7 +27,16 @@ layout (std140) uniform CircleDrawableUBO {
     highp float u_globe_extrude_scale;
     lowp float drawable_pad2;
     lowp float drawable_pad3;
+    // 3D terrain elevation
+    highp vec4 u_dem_coords;
+    highp vec4 u_dem_unpack;
+    highp float u_dem_dim;
+    highp float u_dem_exaggeration;
+    lowp float u_dem_enabled;
+    lowp float drawable_pad4;
 };
+
+uniform sampler2D u_dem;
 
 layout (std140) uniform CircleEvaluatedPropsUBO {
     highp vec4 u_color;
@@ -65,6 +74,7 @@ void main(void) {
     // multiply a_pos by 0.5, since we had it * 2 in order to sneak
     // in extrusion data
     vec2 circle_center = floor(a_pos * 0.5);
+    float ele = get_elevation(circle_center, u_dem, u_dem_coords, u_dem_unpack, u_dem_dim, u_dem_exaggeration, u_dem_enabled);
     if (u_pitch_with_map) {
 #ifdef PROJECTION_GLOBE
         vec3 center_vector = projectToSphere(circle_center + u_projection_translate, vec2(0.0, 0.0));
@@ -81,28 +91,28 @@ void main(void) {
             // To counteract the effect for pitch-scale: viewport, we rescale the
             // whole circle based on the pitch scaling effect at its central point
 #ifdef PROJECTION_GLOBE
-            vec4 projected_center = interpolateProjection(circle_center, center_vector, 0.0);
+            vec4 projected_center = interpolateProjection(circle_center, center_vector, ele);
             angle_scale *= (radius + stroke_width) * (projected_center.w / u_camera_to_center_distance);
 #else
-            vec4 projected_center = u_matrix * vec4(circle_center, 0, 1);
+            vec4 projected_center = u_matrix * vec4(circle_center, ele, 1);
 #endif
             corner_position += extrude * (radius + stroke_width) * u_extrude_scale * (projected_center.w / u_camera_to_center_distance);
         }
 
 #ifdef PROJECTION_GLOBE
         vec3 corner_vector = globeRotateVector(center_vector, extrude * angle_scale);
-        gl_Position = interpolateProjection(corner_position, corner_vector, 0.0);
+        gl_Position = interpolateProjection(corner_position, corner_vector, ele);
 #else
-        gl_Position = u_matrix * vec4(corner_position, 0, 1);
+        gl_Position = u_matrix * vec4(corner_position, ele, 1);
 #endif
     } else {
 #ifdef PROJECTION_GLOBE
-        gl_Position = projectTile(circle_center);
+        gl_Position = projectTileWithElevation(circle_center, ele);
         if (gl_Position.z / gl_Position.w > 1.0) {
             gl_Position.xy = vec2(10000.0);
         }
 #else
-        gl_Position = u_matrix * vec4(circle_center, 0, 1);
+        gl_Position = u_matrix * vec4(circle_center, ele, 1);
 #endif
 
         if (u_scale_with_map) {

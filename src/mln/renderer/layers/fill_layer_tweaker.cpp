@@ -89,8 +89,15 @@ void FillLayerTweaker::execute(LayerGroupBase& layerGroup, const PaintParameters
 
         constexpr bool inViewportPixelUnits = false; // from RenderTile::translatedMatrix
         constexpr bool nearClipped = false;
-        const auto projection = getProjectionData(
-            tileID, parameters, translation, anchor, nearClipped, inViewportPixelUnits, drawable);
+        const auto projection = getProjectionData(tileID,
+                                                  parameters,
+                                                  translation,
+                                                  anchor,
+                                                  nearClipped,
+                                                  inViewportPixelUnits,
+                                                  drawable,
+                                                  /*aligned=*/false,
+                                                  /*renderToTerrain=*/true);
         const auto& matrix = projection.fallbackMatrix;
 #if MLN_UBO_CONSOLIDATION
         projectionUBOVector[i] = toProjectionUBO(projection);

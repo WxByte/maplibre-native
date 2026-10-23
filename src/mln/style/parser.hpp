@@ -6,6 +6,8 @@
 #include <mln/style/light.hpp>
 #include <mln/style/projection.hpp>
 
+#include <mln/style/terrain.hpp>
+
 #include <mln/text/glyph.hpp>
 
 #include <mln/util/constants.hpp>
@@ -43,6 +45,8 @@ public:
     Light light;
     Projection projection;
 
+    std::optional<Terrain> terrain;
+
     // Default values of the root "state" property, keyed by state property
     // name, used by the "global-state" expression.
     GlobalStateMap globalStateDefaults;
@@ -62,6 +66,8 @@ private:
     void parseTransition(const JSValue&);
     void parseLight(const JSValue&);
     void parseProjection(const JSValue&);
+
+    void parseTerrain(const JSValue&);
     void parseState(const JSValue&);
     void parseSources(const JSValue&);
     void parseSprites(const JSValue&);

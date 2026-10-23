@@ -26,6 +26,7 @@ using UniqueVertexBufferResource = std::unique_ptr<VertexBufferResource>;
 namespace gl {
 
 class Texture2D;
+class Texture2DArray;
 class VertexArray;
 
 class DrawableGL : public gfx::Drawable {
@@ -47,6 +48,14 @@ public:
 
     /// Write this value into the stencil buffer instead of testing against the tile's clip value.
     void setStencilWriteRef(std::optional<int32_t> value) { stencilWriteRef = value; }
+
+    // GL-only: an extra sampler2DArray (the packed terrain DEM for the instanced depth pass)
+    // bound alongside the drawable's regular textures in bindTextures(), at shader texture slot
+    // `samplerSlot`. Not part of the gfx texture abstraction, hence set directly on the GL drawable.
+    void setArrayTexture(Texture2DArray* tex, int32_t samplerSlot) {
+        arrayTexture = tex;
+        arrayTextureSlot = samplerSlot;
+    }
 
     void upload(gfx::UploadPass&);
 
@@ -74,6 +83,9 @@ private:
 
     void bindTextures() const;
     void unbindTextures() const;
+
+    Texture2DArray* arrayTexture = nullptr; // optional extra sampler2DArray, see setArrayTexture
+    int32_t arrayTextureSlot = -1;
 };
 
 } // namespace gl

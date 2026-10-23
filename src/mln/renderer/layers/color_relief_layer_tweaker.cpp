@@ -47,7 +47,22 @@ void ColorReliefLayerTweaker::execute(LayerGroupBase& layerGroup, const PaintPar
         }
 
         const UnwrappedTileID tileID = drawable.getTileID()->toUnwrapped();
-        const auto projection = parameters.projectionDataForTile(tileID);
+        // aligned=false to match the projection previously used via matrixForTile(); the
+        // color-relief render test expectations were generated with the unaligned matrix.
+        // Draped over terrain, its projection is the drape target's matrix.
+        bool renderingToTerrain = false;
+        const auto drapeMatrix = getTileMatrix(tileID,
+                                               parameters,
+                                               {0.f, 0.f},
+                                               style::TranslateAnchorType::Viewport,
+                                               false,
+                                               false,
+                                               drawable,
+                                               false,
+                                               /*renderToTerrain=*/true,
+                                               &renderingToTerrain);
+        const auto projection = renderingToTerrain ? parameters.state.getProjectionDataForMatrix(tileID, drapeMatrix)
+                                                   : parameters.projectionDataForTile(tileID);
 
 #if MLN_UBO_CONSOLIDATION
         drawableUBOVector[i].matrix = util::cast<float>(projection.fallbackMatrix);

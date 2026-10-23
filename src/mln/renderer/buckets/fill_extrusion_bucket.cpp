@@ -25,6 +25,7 @@
 #endif
 
 #include <cassert>
+#include <cmath>
 
 namespace mapbox {
 namespace util {
@@ -131,6 +132,20 @@ void FillExtrusionBucket::addFeature(const GeometryTileFeature& feature,
 
         const std::size_t wallVertices = wallVertexCount(totalVertices);
 
+        // Polygon centroid (outer ring), so the whole extrusion is raised by a
+        // single terrain elevation instead of shearing across a slope (as gl-js does)
+        Point<int16_t> centroid{0, 0};
+        if (!polygon.empty() && !polygon.front().empty()) {
+            Point<double> accum{0.0, 0.0};
+            for (const auto& pt : polygon.front()) {
+                accum.x += pt.x;
+                accum.y += pt.y;
+            }
+            const auto count = static_cast<double>(polygon.front().size());
+            centroid.x = static_cast<int16_t>(std::floor(accum.x / count));
+            centroid.y = static_cast<int16_t>(std::floor(accum.y / count));
+        }
+
         std::vector<uint32_t> flatIndices;
         flatIndices.reserve(totalVertices);
 
@@ -157,7 +172,7 @@ void FillExtrusionBucket::addFeature(const GeometryTileFeature& feature,
         const auto processRingPoints =
             [&](const Point<double>& p1, const std::optional<Point<double>>& p2, std::size_t& edgeDistance) {
 #if MLN_USE_FILL_EXTRUSION_INSTANCING
-                vertices.emplace_back(layoutVertex(p1, edgeDistance, !p2));
+                vertices.emplace_back(layoutVertex(p1, edgeDistance, !p2, centroid));
                 flatIndices.emplace_back(triangleIndex);
                 triangleIndex++;
 
@@ -170,7 +185,7 @@ void FillExtrusionBucket::addFeature(const GeometryTileFeature& feature,
                     edgeDistance += dist;
                 }
 #else
-                vertices.emplace_back(FillExtrusionBucket::layoutVertex(p1, 0, 0, 1, edgeDistance));
+                vertices.emplace_back(FillExtrusionBucket::layoutVertex(p1, 0, 0, 1, edgeDistance, centroid));
                 flatIndices.emplace_back(triangleIndex);
                 triangleIndex++;
 
@@ -182,13 +197,17 @@ void FillExtrusionBucket::addFeature(const GeometryTileFeature& feature,
                         edgeDistance = 0;
                     }
 
-                    vertices.emplace_back(FillExtrusionBucket::layoutVertex(*p2, perp.x, perp.y, 0, edgeDistance));
-                    vertices.emplace_back(FillExtrusionBucket::layoutVertex(*p2, perp.x, perp.y, 1, edgeDistance));
+                    vertices.emplace_back(
+                        FillExtrusionBucket::layoutVertex(*p2, perp.x, perp.y, 0, edgeDistance, centroid));
+                    vertices.emplace_back(
+                        FillExtrusionBucket::layoutVertex(*p2, perp.x, perp.y, 1, edgeDistance, centroid));
 
                     edgeDistance += dist;
 
-                    vertices.emplace_back(FillExtrusionBucket::layoutVertex(p1, perp.x, perp.y, 0, edgeDistance));
-                    vertices.emplace_back(FillExtrusionBucket::layoutVertex(p1, perp.x, perp.y, 1, edgeDistance));
+                    vertices.emplace_back(
+                        FillExtrusionBucket::layoutVertex(p1, perp.x, perp.y, 0, edgeDistance, centroid));
+                    vertices.emplace_back(
+                        FillExtrusionBucket::layoutVertex(p1, perp.x, perp.y, 1, edgeDistance, centroid));
 
                     // ┌──────┐
                     // │ 0  1 │ Counter-Clockwise winding order.

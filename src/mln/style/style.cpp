@@ -3,6 +3,8 @@
 #include <mln/style/layer.hpp>
 #include <mln/style/light.hpp>
 #include <mln/style/projection.hpp>
+
+#include <mln/style/terrain.hpp>
 #include <mln/style/source.hpp>
 #include <mln/style/style.hpp>
 #include <mln/style/style_impl.hpp>
@@ -106,6 +108,18 @@ Projection* Style::getProjection() {
 
 const Projection* Style::getProjection() const {
     return impl->getProjection();
+
+void Style::setTerrain(std::unique_ptr<Terrain> terrain) {
+    impl->setTerrain(std::move(terrain));
+}
+
+Terrain* Style::getTerrain() {
+    impl->mutated = true;
+    return impl->getTerrain();
+}
+
+const Terrain* Style::getTerrain() const {
+    return impl->getTerrain();
 }
 
 std::optional<Image> Style::getImage(const std::string& name) const {

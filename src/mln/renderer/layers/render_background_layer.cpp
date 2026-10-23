@@ -157,7 +157,7 @@ void RenderBackgroundLayer::update(gfx::ShaderRegistry& shaders,
     }
 
     if (!layerGroup) {
-        if (auto layerGroup_ = context.createTileLayerGroup(layerIndex, /*initialCapacity=*/64, getID())) {
+        if (auto layerGroup_ = context.createTileLayerGroup(layerIndex, /*initialCapacity=*/64, getID(), true)) {
             setLayerGroup(std::move(layerGroup_), changes);
         } else {
             return;

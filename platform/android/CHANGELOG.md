@@ -8,6 +8,10 @@
 - feat(android): with rotate gestures enabled, drags and zooms on the globe turn the bearing with the planet, so the place under the finger stays under it over the poles and nothing spins about them ([#4533](https://github.com/maplibre/maplibre-native/pull/4533)).
 - feat(android): `Projection#isLocationOccluded` tells whether the globe hides a location, for views placed over the map; a selected marker behind the globe is deselected ([#4533](https://github.com/maplibre/maplibre-native/pull/4533)).
 
+### 🐞 Bug fixes
+
+- With 3D terrain on and the centre clamp enabled, the clamp no longer cancels a running camera animation; the camera is anchored to the ground once the animation ends ([#4768](https://github.com/maplibre/maplibre-native/pull/4768)).
+
 ## 13.7.1
 
 ### ✨ Features and improvements

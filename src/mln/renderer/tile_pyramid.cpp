@@ -127,7 +127,10 @@ void TilePyramid::update(const std::vector<Immutable<style::LayerProperties>>& l
         .tileLodPitchThreshold = parameters.tileLodPitchThreshold,
         .tileLodMode = parameters.tileLodMode,
         .requestedZoom = zoom + util::log2(util::tileSize_D / tileSize),
-        .roundZoom = type == SourceType::Raster || type == SourceType::RasterDEM || type == SourceType::Video};
+        // A DEM rounds as raster does, except under terrain, whose cover floors it (feature/terrain-3d)
+        .roundZoom = type == SourceType::Raster || type == SourceType::Video ||
+                     (type == SourceType::RasterDEM && !parameters.terrain),
+        .elevationProvider = parameters.elevationProvider};
 
     if (std::cmp_greater_equal(overscaledZoom, zoomRange.min)) {
         int32_t idealZoom = std::min<int32_t>(zoomRange.max, overscaledZoom);
@@ -197,7 +200,12 @@ void TilePyramid::update(const std::vector<Immutable<style::LayerProperties>>& l
     // zoom, up to the source's maximum; the globe cover does, like `TileLodMode::Distance`.
     std::optional<util::TileRange> tileRange = std::nullopt;
     if (bounds) {
+        // A variable-zoom cover asks for tiles finer than the nominal zoom near the camera, so
+        // a bounded source has to size its range to its own max zoom. Capping at the nominal
+        // zoom refuses those tiles, and updateRenderables drops the parents they would have
+        // replaced without a fallback, which reads as the layer blinking to the background.
         const bool variableZoom = parameters.tileLodMode == TileLodMode::Distance ||
+                                  parameters.tileLodMode == TileLodMode::Adaptive ||
                                   parameters.transformState.isGlobeRendering();
         const int32_t maxZoom = variableZoom ? zoomRange.max : std::min(tileZoom, static_cast<int32_t>(zoomRange.max));
         tileRange = util::TileRange::fromLatLngBounds(*bounds, zoomRange.min, maxZoom);

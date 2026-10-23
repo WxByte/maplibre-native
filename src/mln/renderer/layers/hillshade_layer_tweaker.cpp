@@ -173,8 +173,15 @@ void HillshadeLayerTweaker::execute(LayerGroupBase& layerGroup, const PaintParam
 
         const UnwrappedTileID tileID = drawable.getTileID()->toUnwrapped();
 
-        const auto projection = getProjectionData(
-            tileID, parameters, {0.f, 0.f}, TranslateAnchorType::Viewport, false, false, drawable, true);
+        const auto projection = getProjectionData(tileID,
+                                                  parameters,
+                                                  {0.f, 0.f},
+                                                  TranslateAnchorType::Viewport,
+                                                  false,
+                                                  false,
+                                                  drawable,
+                                                  /*aligned=*/true,
+                                                  /*renderToTerrain=*/true);
         const auto& matrix = projection.fallbackMatrix;
 #if MLN_UBO_CONSOLIDATION
         projectionUBOVector[i] = toProjectionUBO(projection);

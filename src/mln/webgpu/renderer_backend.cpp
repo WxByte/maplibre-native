@@ -26,6 +26,8 @@
 #include <mln/shaders/webgpu/location_indicator.hpp>
 #include <mln/shaders/webgpu/raster.hpp>
 #include <mln/shaders/webgpu/symbol.hpp>
+#include <mln/shaders/webgpu/terrain.hpp>
+#include <mln/shaders/webgpu/terrain_depth.hpp>
 #include <mln/shaders/webgpu/widevector.hpp>
 
 namespace mln {
@@ -121,6 +123,8 @@ void RendererBackend::initShaders(gfx::ShaderRegistry& registry, const ProgramPa
                   shaders::BuiltIn::SymbolIconShader,
                   shaders::BuiltIn::SymbolSDFShader,
                   shaders::BuiltIn::SymbolTextAndIconShader,
+                  shaders::BuiltIn::TerrainShader,
+                  shaders::BuiltIn::TerrainDepthShader,
                   shaders::BuiltIn::WideVectorShader>(registry, parameters);
     if constexpr (util::GLOBE_ENABLED) {
         registerTypes<shaders::BuiltIn::GlobeDepthShader>(registry, parameters);

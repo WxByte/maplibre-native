@@ -13,6 +13,9 @@ public:
     /// The definition at a zoom level; `mercator` when the style does not set one.
     ProjectionDefinition evaluate(float zoom) const;
 
+    /// Whether the style can render a globe at some zoom (it sets a projection other than a constant `mercator`).
+    bool canShowGlobe() const;
+
     /// How finely tiles are subdivided for this projection, for the life of the style: anything that can render a
     /// globe at some zoom gets the globe granularity, so the Mercator hand-off at high zoom reuses the same tiles.
     SubdivisionGranularitySetting getSubdivisionGranularity() const;

@@ -67,13 +67,15 @@ struct FragmentStage {
 
 FragmentStage vertex vertexMain(thread const VertexStage vertx [[stage_in]],
                                 device const uint32_t& uboIndex [[buffer(idGlobalUBOIndex)]],
+                                device const GlobalPaintParamsUBO& paintParams [[buffer(idGlobalPaintParamsUBO)]],
                                 device const RasterDrawableUBO* drawableVector [[buffer(idRasterDrawableUBO)]],
                                 device const ProjectionUBO* projectionVector [[buffer(idProjectionUBO)]],
                                 device const RasterEvaluatedPropsUBO& props [[buffer(idRasterEvaluatedPropsUBO)]]) {
 
     device const RasterDrawableUBO& drawable = drawableVector[uboIndex];
 
-    const float4 position = projectTile(float2(vertx.pos), float2(vertx.pos), projectionVector[uboIndex]);
+    float4 rawPosition = projectTile(float2(vertx.pos), float2(vertx.pos), projectionVector[uboIndex]);
+    const float4 position = apply_drape_transform(rawPosition, drawable.matrix, paintParams.drape_tile);
 
     // We are using Int16 for texture position coordinates to give us enough precision for
     // fractional coordinates. We use 8192 to scale the texture coordinates in the buffer
