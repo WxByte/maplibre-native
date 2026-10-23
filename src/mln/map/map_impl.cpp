@@ -140,17 +140,14 @@ void Map::Impl::onUpdate() {
     // terrain removed during the transition, so only apply it while there is still terrain.
     if (centerAwaitingTerrainAnchor && !transform.inTransition()) {
         centerAwaitingTerrainAnchor = false;
-        if (centerClampedToGround && style->impl->getTerrain() && !std::isnan(terrainCenterElevation)) {
+        if (centerClampedToGround && terrainShown() && !std::isnan(terrainCenterElevation)) {
             clampCenterToTerrain(terrainCenterElevation);
         }
     }
 
-    // Terrain is for the flat map only: a style that can show the globe keeps it off (the drape targets
-    // and the elevated layers' elevation have no globe variant).
     std::optional<Immutable<style::Terrain::Impl>> terrainImpl;
-    if (auto* terrain = style->impl->getTerrain();
-        terrain && !(util::GLOBE_ENABLED && style->impl->getProjection()->impl->canShowGlobe())) {
-        terrainImpl = terrain->impl;
+    if (terrainShown()) {
+        terrainImpl = style->impl->getTerrain()->impl;
     }
 
     UpdateParameters params = {
@@ -362,9 +359,16 @@ void Map::Impl::onDidFinishRenderingMap() {
     }
 };
 
+bool Map::Impl::terrainShown() const {
+    // Terrain is for the flat map only (SatSquatch): a globe drawn for the current zoom keeps it off (the
+    // drape targets and the elevated layers' elevation have no globe variant). A globe style's map is flat
+    // past the zoom it hands over to Mercator, and shows the terrain there.
+    return style->impl->getTerrain() && !transform.getState().isGlobeRendering();
+}
+
 void Map::Impl::anchorCenterOnTerrain() {
     // The last reported height outlives a removed terrain; the style says whether there is one.
-    if (!style->impl->getTerrain() || std::isnan(terrainCenterElevation)) {
+    if (!terrainShown() || std::isnan(terrainCenterElevation)) {
         return;
     }
     if (setCenterAltitudeKeepingView(terrainCenterElevation)) {
@@ -435,7 +439,7 @@ void Map::Impl::returnCenterToSeaLevel() {
 }
 
 void Map::Impl::noteTerrainRemoval() {
-    const bool hasTerrain = style->impl->getTerrain() != nullptr;
+    const bool hasTerrain = terrainShown();
     if (hadTerrain && !hasTerrain) {
         centerAwaitingSeaLevel = true;
     } else if (hasTerrain) {

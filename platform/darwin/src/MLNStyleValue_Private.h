@@ -273,8 +273,15 @@ private:  // Private utilities for converting from mgl to mbgl values
     mbglValue = mln::style::expression::Image(rawValue.UTF8String);
   }
 
-  // Array
+  // Array. A lone element is an array of one, as the style spec's colorArray and numberArray
+  // allow (a hillshade's single light: one color, one direction). (SatSquatch)
   void getMBGLValue(ObjCType rawValue, std::vector<MBGLElement> &mbglValue) {
+    if (![(id)rawValue isKindOfClass:[NSArray class]]) {
+      MBGLElement mbglElement;
+      getMBGLValue((id)rawValue, mbglElement);
+      mbglValue.push_back(mbglElement);
+      return;
+    }
     mbglValue.reserve(rawValue.count);
     for (id obj in rawValue) {
       id constantObject = obj;
