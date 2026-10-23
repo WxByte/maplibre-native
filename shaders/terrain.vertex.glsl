@@ -35,5 +35,10 @@ void main() {
     // curtain that hides the cracks between neighbouring tiles at different zoom
     // levels (maplibre-gl-js u_ele_delta).
     float ele_delta = a_pos.z == 1.0 ? u_elevation_offset : 0.0;
+#ifdef PROJECTION_GLOBE
+    // On the globe (SatSquatch): the tile's point on the sphere, raised by the elevation
+    gl_Position = projectTileFor3D(pos, v_elevation - ele_delta);
+#else
     gl_Position = u_matrix * vec4(pos.x, pos.y, v_elevation - ele_delta, 1.0);
+#endif
 }

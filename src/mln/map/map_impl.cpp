@@ -140,7 +140,7 @@ void Map::Impl::onUpdate() {
     // terrain removed during the transition, so only apply it while there is still terrain.
     if (centerAwaitingTerrainAnchor && !transform.inTransition()) {
         centerAwaitingTerrainAnchor = false;
-        if (centerClampedToGround && terrainShown() && !std::isnan(terrainCenterElevation)) {
+        if (centerClampedToGround && terrainAnchorsCamera() && !std::isnan(terrainCenterElevation)) {
             clampCenterToTerrain(terrainCenterElevation);
         }
     }
@@ -360,15 +360,20 @@ void Map::Impl::onDidFinishRenderingMap() {
 };
 
 bool Map::Impl::terrainShown() const {
-    // Terrain is for the flat map only (SatSquatch): a globe drawn for the current zoom keeps it off (the
-    // drape targets and the elevated layers' elevation have no globe variant). A globe style's map is flat
-    // past the zoom it hands over to Mercator, and shows the terrain there.
-    return style->impl->getTerrain() && !transform.getState().isGlobeRendering();
+    // On the globe from GLOBE_TERRAIN_MIN_ZOOM up (SatSquatch): the whole planet's view has no relief to see,
+    // and keeps the plain globe (with its poles, which the terrain's tiles stop short of).
+    const TransformState& state = transform.getState();
+    return style->impl->getTerrain() && (!state.isGlobeRendering() || state.getZoom() >= util::GLOBE_TERRAIN_MIN_ZOOM);
+}
+
+bool Map::Impl::terrainAnchorsCamera() const {
+    // The centre's altitude is the flat map's: on the globe the camera stays on the sea-level sphere.
+    return terrainShown() && !transform.getState().isGlobeRendering();
 }
 
 void Map::Impl::anchorCenterOnTerrain() {
     // The last reported height outlives a removed terrain; the style says whether there is one.
-    if (!terrainShown() || std::isnan(terrainCenterElevation)) {
+    if (!terrainAnchorsCamera() || std::isnan(terrainCenterElevation)) {
         return;
     }
     if (setCenterAltitudeKeepingView(terrainCenterElevation)) {
@@ -439,7 +444,7 @@ void Map::Impl::returnCenterToSeaLevel() {
 }
 
 void Map::Impl::noteTerrainRemoval() {
-    const bool hasTerrain = terrainShown();
+    const bool hasTerrain = terrainAnchorsCamera();
     if (hadTerrain && !hasTerrain) {
         centerAwaitingSeaLevel = true;
     } else if (hasTerrain) {

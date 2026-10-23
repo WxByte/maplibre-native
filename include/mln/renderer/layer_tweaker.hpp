@@ -107,6 +107,10 @@ public:
 
     static shaders::ProjectionUBO toProjectionUBO(const ProjectionData&);
 
+    /// A draped tile's projection: flat into the terrain's tile texture by the drape matrix, on the globe as on the
+    /// flat map (its shaders reduce to the matrix at transition 0). (SatSquatch)
+    static ProjectionData drapeProjectionData(const TransformState&, const UnwrappedTileID&, const mat4& drapeMatrix);
+
     /// Radians per pixel on the sphere for a tile; GL JS `globeExtrudeScale`. `latitudeScale` is the cosine of the
     /// center latitude on the globe and 1 on Mercator.
     static float globeExtrudeScale(const UnwrappedTileID&, float zoom, double latitudeScale);

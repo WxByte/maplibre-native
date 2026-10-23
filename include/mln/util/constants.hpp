@@ -36,6 +36,10 @@ constexpr bool GLOBE_ENABLED = true;
 #else
 constexpr bool GLOBE_ENABLED = false;
 #endif
+/// 3D terrain on the globe (SatSquatch): none below the first zoom (the whole planet, where there is no relief to
+/// see), its relief rising to the full exaggeration by the second.
+constexpr double GLOBE_TERRAIN_MIN_ZOOM = 5.0;
+constexpr double GLOBE_TERRAIN_FULL_ZOOM = 7.0;
 constexpr double LONGITUDE_MAX = 180;
 constexpr double DEGREES_MAX = 360;
 constexpr double PITCH_MIN = 0.0;

@@ -71,6 +71,7 @@ FragmentStage vertex vertexMain(thread const VertexStage vertx [[stage_in]],
                                 device const uint32_t& uboIndex [[buffer(idGlobalUBOIndex)]],
                                 device const TerrainDrawableUBO* drawableVector [[buffer(idTerrainDrawableUBO)]],
                                 device const TerrainEvaluatedPropsUBO& props [[buffer(idTerrainEvaluatedPropsUBO)]],
+                                device const ProjectionUBO* projectionVector [[buffer(idProjectionUBO)]],
                                 texture2d<float, access::sample> demTexture [[texture(0)]],
                                 sampler demSampler [[sampler(0)]]) {
 
@@ -92,7 +93,12 @@ FragmentStage vertex vertexMain(thread const VertexStage vertx [[stage_in]],
     // that hides the cracks between neighbouring tiles at different zoom levels
     // (maplibre-gl-js u_ele_delta). pos.z carries the skirt flag.
     const float ele_delta = (float(vertx.pos.z) == 1.0) ? props.elevation_offset : 0.0;
+#if defined(PROJECTION_GLOBE)
+    // On the globe (SatSquatch): the tile's point on the sphere, raised by the elevation
+    float4 position = projectTileFor3D(pos, elevation - ele_delta, projectionVector[uboIndex]);
+#else
     float4 position = drawable.matrix * float4(pos.x, pos.y, elevation - ele_delta, 1.0);
+#endif
 
     return {
         .position  = position,

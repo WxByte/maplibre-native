@@ -665,7 +665,8 @@ void Renderer::Impl::render(const RenderTree& renderTree, const std::shared_ptr<
                                             PaintParameters::depthEpsilon;
 
         // The planet goes into the depth buffer first, so 3D geometry behind the horizon stays hidden.
-        if (auto* globeDepth = orchestrator.getGlobeDepthLayerGroup()) {
+        // With terrain the ground's depth is the terrain mesh's, which the sea-level sphere's would hide
+        if (auto* globeDepth = orchestrator.getGlobeDepthLayerGroup(); globeDepth && !parameters.terrain) {
             globeDepth->render(orchestrator, parameters);
         }
 

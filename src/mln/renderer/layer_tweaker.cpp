@@ -128,17 +128,22 @@ ProjectionData LayerTweaker::getProjectionData(const UnwrappedTileID& tileID,
                                                bool aligned,
                                                bool renderToTerrain,
                                                bool* renderingToTerrain) {
-    auto data = parameters.state.getProjectionDataForMatrix(tileID,
-                                                            getTileMatrix(tileID,
-                                                                          parameters,
-                                                                          translation,
-                                                                          anchor,
-                                                                          nearClipped,
-                                                                          inViewportPixelUnits,
-                                                                          drawable,
-                                                                          aligned,
-                                                                          renderToTerrain,
-                                                                          renderingToTerrain));
+    bool draped = false;
+    const mat4 matrix = getTileMatrix(tileID,
+                                      parameters,
+                                      translation,
+                                      anchor,
+                                      nearClipped,
+                                      inViewportPixelUnits,
+                                      drawable,
+                                      aligned,
+                                      renderToTerrain,
+                                      &draped);
+    if (renderingToTerrain) {
+        *renderingToTerrain = draped;
+    }
+    auto data = draped ? drapeProjectionData(parameters.state, tileID, matrix)
+                       : parameters.state.getProjectionDataForMatrix(tileID, matrix);
     if (!inViewportPixelUnits) {
         data.translate = util::cast<double>(
             RenderTile::tileUnitTranslation(tileID, translation, anchor, parameters.state));
@@ -151,6 +156,17 @@ ProjectionData LayerTweaker::getProjectionData(const UnwrappedTileID& tileID,
                            PaintParameters::depthEpsilon;
     }
 #endif
+    return data;
+}
+
+ProjectionData LayerTweaker::drapeProjectionData(const TransformState& state,
+                                                 const UnwrappedTileID& tileID,
+                                                 const mat4& drapeMatrix) {
+    auto data = state.getProjectionDataForMatrix(tileID, drapeMatrix);
+    data.mainMatrix = drapeMatrix;
+    data.fallbackMatrix = drapeMatrix;
+    data.projectionTransition = 0;
+    data.clippingPlane = {{0, 0, 0, 0}};
     return data;
 }
 

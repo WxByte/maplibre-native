@@ -33,6 +33,7 @@ public:
 protected:
 #if MLN_UBO_CONSOLIDATION
     gfx::UniformBufferPtr drawableUniformBuffer;
+    gfx::UniformBufferPtr projectionUniformBuffer;
 #endif
 
     const RenderTerrain* terrain = nullptr;

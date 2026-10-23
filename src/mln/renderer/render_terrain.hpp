@@ -7,6 +7,7 @@
 #include <mln/util/constants.hpp>
 #include <mln/gfx/vertex_buffer.hpp>
 #include <mln/gfx/index_buffer.hpp>
+#include <mln/gfx/projection_variant.hpp>
 #include <mln/renderer/terrain_cache_policy.hpp>
 #include <mln/renderer/texture_pool.hpp>
 #include <mln/util/mat4.hpp>
@@ -175,9 +176,13 @@ public:
     std::vector<double> queryElevations(const std::vector<LatLng>& latLngs) const;
 
     /**
-     * @brief Get the terrain exaggeration multiplier
+     * @brief Get the terrain exaggeration multiplier: the style's, faded in on the globe
+     * (GLOBE_TERRAIN_MIN_ZOOM to GLOBE_TERRAIN_FULL_ZOOM; SatSquatch)
      */
     float getExaggeration() const;
+
+    /// Whether the mesh is drawn on the globe (the frame's projection, as of update). (SatSquatch)
+    bool isGlobe() const { return meshVariant == gfx::ProjectionVariant::Globe; }
 
     /**
      * @brief Get the source ID providing DEM data
@@ -327,6 +332,9 @@ private:
     // The skirt setting the cached mesh was built with. update() drops the mesh and every
     // tile drawable built from it when the map's setting no longer matches.
     TerrainSkirtLength meshSkirtLength = TerrainSkirtLength::Auto;
+    // The projection the tile drawables' shader was built for, and the globe's fade of the exaggeration.
+    gfx::ProjectionVariant meshVariant = gfx::ProjectionVariant::Mercator;
+    float exaggerationScale = 1.0f;
 
     // Layer group for terrain drawables
     LayerGroupBasePtr layerGroup;

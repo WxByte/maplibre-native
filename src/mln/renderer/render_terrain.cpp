@@ -140,6 +140,10 @@ std::set<UnwrappedTileID> RenderTerrain::computeMeshCover(
     // this is correct for terrain above OR below sea level (bathymetry) without hardcoding
     // a direction; the frustum trim stops it from tripling the cover like a blind ring
     // would. Drop the frustumCull line to fall back to a pure uniform 1-ring dilation.
+    // The globe's own cover takes in the tiles over its horizon, and the frustum test below is the flat map's
+    if (state.isGlobeRendering()) {
+        return out;
+    }
     std::set<UnwrappedTileID> dilated = out;
     for (const auto& id : out) {
         const int32_t numTiles = 1 << id.canonical.z;
@@ -209,6 +213,30 @@ void RenderTerrain::update(RenderOrchestrator& orchestrator,
     // Create tweaker if we don't have one
     if (!tweaker) {
         tweaker = std::make_unique<TerrainLayerTweaker>(this);
+    }
+
+    // On the globe the mesh is drawn on the sphere (its shader's globe variant), so a change of projection drops
+    // the tile drawables; the relief fades in over the globe's first terrain zooms.
+    const auto variant = state.isGlobeRendering() ? gfx::ProjectionVariant::Globe : gfx::ProjectionVariant::Mercator;
+    if (variant != meshVariant) {
+        meshVariant = variant;
+        if (layerGroup) {
+            layerGroup->clearDrawables();
+        }
+        if (depthLayerGroup) {
+            depthLayerGroup->clearDrawables();
+            depthDirty = true;
+        }
+        tilesWithDrawables.clear();
+    }
+    if (state.isGlobeRendering()) {
+        const double t = std::clamp((state.getZoom() - util::GLOBE_TERRAIN_MIN_ZOOM) /
+                                        (util::GLOBE_TERRAIN_FULL_ZOOM - util::GLOBE_TERRAIN_MIN_ZOOM),
+                                    0.0,
+                                    1.0);
+        exaggerationScale = static_cast<float>(t * t * (3.0 - 2.0 * t));
+    } else {
+        exaggerationScale = 1.0f;
     }
 
     // The skirts are baked into the shared mesh, so a change of setting has to drop the mesh
@@ -816,7 +844,8 @@ const std::shared_ptr<gfx::Texture2D>& RenderTerrain::getPlaceholderDEMTexture(g
 void RenderTerrain::renderDepth(RenderOrchestrator& orchestrator,
                                 const RenderTree& renderTree,
                                 PaintParameters& parameters) {
-    if (!depthLayerGroup || depthLayerGroup->empty()) {
+    // The depth pass's matrices are the flat map's; on the globe symbols don't test against it (symbol tweaker)
+    if (!depthLayerGroup || depthLayerGroup->empty() || isGlobe()) {
         return;
     }
     prepareDepthTarget(parameters);
@@ -897,7 +926,7 @@ const std::shared_ptr<gfx::Texture2D>& RenderTerrain::getDepthTexture(gfx::Conte
 }
 
 float RenderTerrain::getExaggeration() const {
-    return impl->exaggeration;
+    return impl->exaggeration * exaggerationScale;
 }
 
 const std::string& RenderTerrain::getSourceID() const {
@@ -1074,9 +1103,11 @@ std::unique_ptr<gfx::Drawable> RenderTerrain::createDrawableForTile(gfx::Context
     }
 
     // Get terrain shader
-    // Terrain is mercator only for now (map_impl.cpp)
+    // The mesh on the globe or the flat map (meshVariant); the depth pass is the flat map's
     auto terrainShader = context.getGenericShader(
-        shaders, depthPass ? "TerrainDepthShader" : "TerrainShader", gfx::ProjectionVariant::Mercator);
+        shaders,
+        depthPass ? "TerrainDepthShader" : "TerrainShader",
+        depthPass ? gfx::ProjectionVariant::Mercator : meshVariant);
     if (!terrainShader) {
         // The depth shader is not registered on all backends yet; symbols
         // then sample the far-plane placeholder and stay visible

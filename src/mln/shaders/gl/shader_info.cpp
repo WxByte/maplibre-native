@@ -598,6 +598,7 @@ using TerrainShaderInfo = ShaderInfo<BuiltIn::TerrainShader, gfx::Backend::Type:
 
 const std::vector<UniformBlockInfo> TerrainShaderInfo::uniformBlocks = {
     UniformBlockInfo{"TerrainDrawableUBO", idTerrainDrawableUBO},
+    UniformBlockInfo{"ProjectionUBO", idProjectionUBO},
     UniformBlockInfo{"TerrainEvaluatedPropsUBO", idTerrainEvaluatedPropsUBO},
 };
 const std::vector<AttributeInfo> TerrainShaderInfo::attributes = {

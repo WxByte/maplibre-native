@@ -3,6 +3,7 @@
 #include <mln/gfx/context.hpp>
 #include <mln/gfx/drawable.hpp>
 #include <mln/renderer/layer_group.hpp>
+#include <mln/renderer/layer_tweaker.hpp>
 #include <mln/renderer/paint_parameters.hpp>
 #include <mln/renderer/render_terrain.hpp>
 #include <mln/shaders/terrain_layer_ubo.hpp>
@@ -54,6 +55,7 @@ void TerrainLayerTweaker::execute(LayerGroupBase& layerGroup, const PaintParamet
 #if MLN_UBO_CONSOLIDATION
     int i = 0;
     std::vector<TerrainDrawableUBO> drawableUBOVector(layerGroup.getDrawableCount());
+    std::vector<ProjectionUBO> projectionUBOVector(layerGroup.getDrawableCount());
 #endif
 
     // Visit each drawable to populate per-drawable UBOs
@@ -85,8 +87,15 @@ void TerrainLayerTweaker::execute(LayerGroupBase& layerGroup, const PaintParamet
         matrix[14] = 0.5 * (matrix[14] + matrix[15]);
 #endif
 
+        // The tile on the sphere (the shader's globe variant), else this matrix
+        const auto projection = LayerTweaker::toProjectionUBO(
+            parameters.state.getProjectionDataForMatrix(tileID, matrix));
+
 #if !MLN_UBO_CONSOLIDATION
         auto& drawableUniforms = drawable.mutableUniformBuffers();
+        drawableUniforms.createOrUpdate(idProjectionUBO, &projection, context);
+#else
+        projectionUBOVector[i] = projection;
 #endif
 
 #if MLN_UBO_CONSOLIDATION
@@ -117,6 +126,15 @@ void TerrainLayerTweaker::execute(LayerGroupBase& layerGroup, const PaintParamet
     }
 
     layerUniforms.set(idTerrainDrawableUBO, drawableUniformBuffer);
+
+    const size_t projectionUBOVectorSize = sizeof(ProjectionUBO) * projectionUBOVector.size();
+    if (!projectionUniformBuffer || projectionUniformBuffer->getSize() < projectionUBOVectorSize) {
+        projectionUniformBuffer = context.createUniformBuffer(
+            projectionUBOVector.data(), projectionUBOVectorSize, false, true);
+    } else {
+        projectionUniformBuffer->update(projectionUBOVector.data(), projectionUBOVectorSize);
+    }
+    layerUniforms.set(idProjectionUBO, projectionUniformBuffer);
 #endif
 }
 

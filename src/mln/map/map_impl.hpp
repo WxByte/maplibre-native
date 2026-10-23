@@ -131,8 +131,9 @@ public:
     /// Terrain height under the centre, as the renderer last reported it (NaN until then).
     double terrainCenterElevation = std::numeric_limits<double>::quiet_NaN();
     void anchorCenterOnTerrain();
-    /// Whether the style's terrain is drawn for the current camera.
+    /// Whether the style's terrain is drawn for the current camera, and whether the camera's centre stands on it.
     bool terrainShown() const;
+    bool terrainAnchorsCamera() const;
     /// Slides the centre along the line of sight to `altitudeMeters`, the zoom following, so the
     /// camera stays where it is. False, changing nothing, when there was nothing to move, the line
     /// of sight nearly grazes the plane at that altitude, the plane is (nearly) at the camera, or

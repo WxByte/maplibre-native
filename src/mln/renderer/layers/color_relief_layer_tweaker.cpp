@@ -61,7 +61,7 @@ void ColorReliefLayerTweaker::execute(LayerGroupBase& layerGroup, const PaintPar
                                                false,
                                                /*renderToTerrain=*/true,
                                                &renderingToTerrain);
-        const auto projection = renderingToTerrain ? parameters.state.getProjectionDataForMatrix(tileID, drapeMatrix)
+        const auto projection = renderingToTerrain ? drapeProjectionData(parameters.state, tileID, drapeMatrix)
                                                    : parameters.projectionDataForTile(tileID);
 
 #if MLN_UBO_CONSOLIDATION
