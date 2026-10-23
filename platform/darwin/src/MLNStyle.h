@@ -308,6 +308,16 @@ MLN_EXPORT
  */
 @property (nonatomic, strong) MLNLight *light;
 
+// MARK: Managing the Style's 3D Terrain
+
+/**
+ Sets the style's 3D terrain: the map draped over the raster-DEM source with the given identifier,
+ at the vertical exaggeration (1: true scale); `nil` removes it. Terrain shows on the flat map
+ (Mercator). (SatSquatch)
+ */
+- (void)setTerrainSourceIdentifier:(nullable NSString *)sourceIdentifier
+                      exaggeration:(double)exaggeration;
+
 // MARK: Localizing Map Content
 
 /**

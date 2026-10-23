@@ -431,6 +431,20 @@ MLN_EXPORT
 @property (nonatomic, readonly) UIButton *attributionButton;
 
 /**
+ The 3D terrain's heights (metres, without its exaggeration) at coordinates, from the DEM tiles
+ loaded for it: NaN where there is no terrain, or no DEM covering a coordinate yet. (SatSquatch)
+
+ @param coordinates The coordinates, `count` of them.
+ @param heights Filled with `count` heights.
+ */
+- (void)terrainElevationsAtCoordinates:(const CLLocationCoordinate2D *)coordinates
+                                 count:(NSUInteger)count
+                               heights:(double *)heights;
+
+/** The 3D terrain's vertical exaggeration; 0 without terrain. (SatSquatch) */
+@property (nonatomic, readonly) double terrainExaggeration;
+
+/**
  The position of the attribution button. The default value is
  ``MLNOrnamentPosition/MLNOrnamentPositionBottomRight``.
  */

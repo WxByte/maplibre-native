@@ -5412,6 +5412,24 @@ static void *windowScreenContext = &windowScreenContext;
   return hitAnnotationTag;
 }
 
+- (void)terrainElevationsAtCoordinates:(const CLLocationCoordinate2D *)coordinates
+                                 count:(NSUInteger)count
+                               heights:(double *)heights {
+  std::vector<mln::LatLng> latLngs;
+  latLngs.reserve(count);
+  for (NSUInteger i = 0; i < count; i++) {
+    latLngs.emplace_back(coordinates[i].latitude, coordinates[i].longitude);
+  }
+  const auto result = _rendererFrontend->getRenderer()->queryTerrainElevations(latLngs);
+  for (NSUInteger i = 0; i < count; i++) {
+    heights[i] = i < result.size() ? result[i] : NAN;
+  }
+}
+
+- (double)terrainExaggeration {
+  return _rendererFrontend->getRenderer()->getTerrainExaggeration();
+}
+
 /// Returns the tags of the annotations coincident with the given rectangle.
 - (std::vector<MLNAnnotationTag>)annotationTagsInRect:(CGRect)rect {
   return _rendererFrontend->getRenderer()->queryPointAnnotations({

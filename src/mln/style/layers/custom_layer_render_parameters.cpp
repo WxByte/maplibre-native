@@ -1,6 +1,7 @@
 #include <mln/style/layers/custom_layer_render_parameters.hpp>
 #include <mln/map/transform_state.hpp>
 #include <mln/renderer/paint_parameters.hpp>
+#include <mln/renderer/render_terrain.hpp>
 #include <mln/tile/tile_id.hpp>
 #include <mln/util/mat4.hpp>
 
@@ -27,6 +28,14 @@ CustomLayerRenderParameters::CustomLayerRenderParameters(const mln::PaintParamet
     const ProjectionData projection = state.getProjectionData(UnwrappedTileID(0, 0, 0));
     globeProjectionMatrix = projection.mainMatrix;
     globeClippingPlane = projection.clippingPlane;
+
+    if (const RenderTerrain* renderTerrain = paintParameters.terrain; renderTerrain && renderTerrain->isEnabled()) {
+        terrainExaggeration = renderTerrain->getExaggeration();
+        terrain = renderTerrain;
+        terrainElevation = [](const void* t, double latitude, double longitude) {
+            return static_cast<const RenderTerrain*>(t)->queryElevation(LatLng(latitude, longitude));
+        };
+    }
 }
 
 } // namespace style

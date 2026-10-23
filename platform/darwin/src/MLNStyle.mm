@@ -38,6 +38,7 @@
 #include <mln/style/sources/raster_source.hpp>
 #include <mln/style/sources/vector_source.hpp>
 #include <mln/style/style.hpp>
+#include <mln/style/terrain.hpp>
 
 #import "NSDate+MLNAdditions.h"
 
@@ -578,6 +579,12 @@ const MLNExceptionName MLNRedundantSourceIdentifierException =
 }
 
 // MARK: Style light
+
+- (void)setTerrainSourceIdentifier:(nullable NSString *)sourceIdentifier exaggeration:(double)exaggeration {
+  self.rawStyle->setTerrain(sourceIdentifier ? std::make_unique<mln::style::Terrain>(
+                                                   sourceIdentifier.UTF8String, static_cast<float>(exaggeration))
+                                             : nullptr);
+}
 
 - (void)setLight:(MLNLight *)light {
   std::unique_ptr<mln::style::Light> mbglLight =

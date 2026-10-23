@@ -7,8 +7,11 @@
 #include <mln/layermanager/layer_manager.hpp>
 #include <mln/renderer/renderer_impl.hpp>
 #include <mln/renderer/render_static_data.hpp>
+#include <mln/renderer/render_terrain.hpp>
 #include <mln/renderer/render_tree.hpp>
 #include <mln/renderer/update_parameters.hpp>
+
+#include <limits>
 #include <mln/util/error_sink.hpp>
 #include <mln/util/instrumentation.hpp>
 
@@ -76,6 +79,19 @@ AnnotationIDs Renderer::queryPointAnnotations(const ScreenBox& box) const {
     options.layerIDs = {{AnnotationManager::PointLayerID}};
     auto features = queryRenderedFeatures(box, options);
     return getAnnotationIDs(features);
+}
+
+std::vector<double> Renderer::queryTerrainElevations(const std::vector<LatLng>& latLngs) const {
+    const auto* terrain = impl->orchestrator.getRenderTerrain();
+    if (!terrain || !terrain->isEnabled()) {
+        return std::vector<double>(latLngs.size(), std::numeric_limits<double>::quiet_NaN());
+    }
+    return terrain->queryElevations(latLngs);
+}
+
+double Renderer::getTerrainExaggeration() const {
+    const auto* terrain = impl->orchestrator.getRenderTerrain();
+    return terrain && terrain->isEnabled() ? terrain->getExaggeration() : 0.0;
 }
 
 AnnotationIDs Renderer::queryShapeAnnotations(const ScreenBox& box) const {

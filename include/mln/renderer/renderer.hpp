@@ -60,6 +60,12 @@ public:
     std::vector<Feature> querySourceFeatures(const std::string& sourceID, const SourceQueryOptions& options = {}) const;
     AnnotationIDs queryPointAnnotations(const ScreenBox& box) const;
     AnnotationIDs queryShapeAnnotations(const ScreenBox& box) const;
+
+    /// The 3D terrain's heights (m, without its exaggeration) at coordinates, from the DEM tiles loaded for it:
+    /// NaN where there is no terrain, or no DEM covering a coordinate yet. (SatSquatch)
+    std::vector<double> queryTerrainElevations(const std::vector<LatLng>&) const;
+    /// The 3D terrain's vertical exaggeration; 0 without terrain. (SatSquatch)
+    double getTerrainExaggeration() const;
     AnnotationIDs getAnnotationIDs(const std::vector<Feature>&) const;
 
     /// Feature extension query

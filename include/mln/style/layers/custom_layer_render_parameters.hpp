@@ -44,6 +44,14 @@ struct CustomLayerRenderParameters {
     /// The plane behind which sphere positions are on the far side of the globe: `dot(position, xyz) + w < 0`.
     std::array<double, 4> globeClippingPlane;
 
+    /// The 3D terrain (SatSquatch): its vertical exaggeration (0 without terrain), and its height (m, before the
+    /// exaggeration) at a coordinate from the DEM tiles loaded for this frame, NaN where none covers it yet:
+    /// `terrainElevation(terrain, latitude, longitude)`. `terrain` is null without terrain. Plain data, as the host
+    /// may be built apart from MapLibre; valid only during the call the parameters are passed to, on its thread.
+    double terrainExaggeration = 0;
+    const void* terrain = nullptr;
+    double (*terrainElevation)(const void* terrain, double latitude, double longitude) = nullptr;
+
     CustomLayerRenderParameters(const PaintParameters&);
 };
 

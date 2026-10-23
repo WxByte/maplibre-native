@@ -51,6 +51,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <limits>
 #include <cstring>
 #include <functional>
 #include <iomanip>
@@ -627,14 +628,18 @@ bool RenderTerrain::normalizeTileCoordinates(UnwrappedTileID& tileID, float& x, 
     return true;
 }
 
-float RenderTerrain::getElevation(const UnwrappedTileID& tileID_, float x, float y) const {
+float RenderTerrain::getElevation(const UnwrappedTileID& tileID, float x, float y) const {
+    return sampleElevation(tileID, x, y).value_or(0.0f);
+}
+
+std::optional<float> RenderTerrain::sampleElevation(const UnwrappedTileID& tileID_, float x, float y) const {
     if (!demSource) {
-        return 0.0f;
+        return std::nullopt;
     }
 
     UnwrappedTileID tileID = tileID_;
     if (!normalizeTileCoordinates(tileID, x, y)) {
-        return 0.0f;
+        return std::nullopt;
     }
 
     // Find the DEM tile matching the requested tile, or its closest available ancestor
@@ -650,21 +655,21 @@ float RenderTerrain::getElevation(const UnwrappedTileID& tileID_, float x, float
         }
     }
     if (!demRenderTile) {
-        return 0.0f;
+        return std::nullopt;
     }
 
     const auto& tile = demRenderTile->getTile();
     if (tile.kind != Tile::Kind::RasterDEM) {
-        return 0.0f;
+        return std::nullopt;
     }
     auto* demTile = const_cast<RasterDEMTile*>(static_cast<const RasterDEMTile*>(&tile));
     auto* bucket = demTile->getBucket();
     if (!bucket) {
-        return 0.0f;
+        return std::nullopt;
     }
     const auto& demData = bucket->getDEMData();
     if (!demData.getImagePtr() || demData.dim <= 0) {
-        return 0.0f;
+        return std::nullopt;
     }
 
     // Map the tile-local coordinate into the (possibly ancestor) DEM tile
@@ -692,6 +697,43 @@ float RenderTerrain::getElevation(const UnwrappedTileID& tileID_, float x, float
 
 float RenderTerrain::getElevationWithExaggeration(const UnwrappedTileID& tileID, float x, float y) const {
     return getElevation(tileID, x, y) * getExaggeration();
+}
+
+double RenderTerrain::queryElevation(const LatLng& latLng) const {
+    constexpr double none = std::numeric_limits<double>::quiet_NaN();
+    if (!demSource) {
+        return none;
+    }
+    // As getElevationForLatLng: at the depth of the finest DEM tile loaded
+    int sampleZoom = -1;
+    for (const auto& renderTile : *demSource->getRawRenderTiles()) {
+        if (renderTile.getTile().kind == Tile::Kind::RasterDEM) {
+            sampleZoom = std::max(sampleZoom, static_cast<int>(renderTile.id.canonical.z));
+        }
+    }
+    if (sampleZoom < 0) {
+        return none;
+    }
+    const auto point = Projection::project(latLng, sampleZoom);
+    const auto tx = static_cast<int64_t>(std::floor(point.x));
+    const auto ty = static_cast<int64_t>(std::floor(point.y));
+    if (ty < 0 || static_cast<double>(ty) >= std::pow(2.0, sampleZoom)) {
+        return none; // past a pole
+    }
+    const UnwrappedTileID sampleTile(static_cast<uint8_t>(sampleZoom), tx, ty);
+    const auto height = sampleElevation(sampleTile,
+                                        static_cast<float>((point.x - static_cast<double>(tx)) * util::EXTENT),
+                                        static_cast<float>((point.y - static_cast<double>(ty)) * util::EXTENT));
+    return height ? *height : none;
+}
+
+std::vector<double> RenderTerrain::queryElevations(const std::vector<LatLng>& latLngs) const {
+    std::vector<double> heights;
+    heights.reserve(latLngs.size());
+    for (const auto& latLng : latLngs) {
+        heights.push_back(queryElevation(latLng));
+    }
+    return heights;
 }
 
 double RenderTerrain::getElevationForLatLng(const LatLng& latLng) const {
