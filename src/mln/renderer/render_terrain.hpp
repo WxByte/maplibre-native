@@ -96,6 +96,8 @@ public:
     /// call, so every getRenderTarget() lookup missed and no terrain drawable was
     /// ever created - the map rendered empty.
     void setFrameMeshCover(std::set<UnwrappedTileID> cover) { frameMeshCover = std::move(cover); }
+    /// This frame's mesh cover, a drape target per tile, until update takes it. (SatSquatch)
+    const std::optional<std::set<UnwrappedTileID>>& getFrameMeshCover() const { return frameMeshCover; }
 
     /**
      * @brief Update terrain rendering (create/update drawables)

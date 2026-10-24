@@ -182,6 +182,10 @@ RenderTarget::DrapeCoverage RenderTarget::computeDrapeCoverage(RenderOrchestrato
             util::hash_combine(tileHash, unwrapped.canonical.y);
             coverage.contentHash += tileHash;
         });
+        // A draped custom layer's picture changes without its tiles (SatSquatch)
+        if (const auto& revision = layerGroup.getDrapeRevision()) {
+            util::hash_combine(coverage.contentHash, *revision);
+        }
         // Only the coarsest standalone fallback counts as lost detail; when an exact or
         // deeper tile is present the ancestor is clipped away by the tile masks and costs
         // nothing.

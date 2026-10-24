@@ -31,5 +31,23 @@ protected:
     std::shared_ptr<style::CustomLayerHost> host;
 };
 
+/**
+ Tweaker that drapes a CustomLayer onto the 3D terrain: draws its part of the drape target being rendered through
+ CustomLayerHost::renderToTile (SatSquatch)
+ */
+class DrawableCustomLayerDrapeTweaker : public gfx::DrawableTweaker {
+public:
+    DrawableCustomLayerDrapeTweaker(std::shared_ptr<style::CustomLayerHost> host_)
+        : host(std::move(host_)) {}
+    ~DrawableCustomLayerDrapeTweaker() override = default;
+
+    void init(Drawable&) override {};
+
+    void execute(Drawable&, PaintParameters&) override;
+
+protected:
+    std::shared_ptr<style::CustomLayerHost> host;
+};
+
 } // namespace gfx
 } // namespace mln

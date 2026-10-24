@@ -180,6 +180,24 @@ MLN_EXPORT
 ///   - context: A context structure with information defining the frame to draw.
 - (void)drawInMapView:(MLNMapView *)mapView withContext:(MLNStyleLayerDrawingContext)context;
 
+/// Draping onto the 3D terrain (SatSquatch). While the map has terrain, called each frame before drawing:
+/// return `YES` with a revision of what the layer draws to drape it onto the terrain
+/// (``drawTileWithZoom:x:y:matrix:inMapView:`` for each of the terrain's tiles, in its place among the
+/// draped layers) rather than draw it over the map (``drawInMapView:withContext:``). A new revision redraws
+/// the terrain's tiles, every draped layer's, so change it only with the picture. The default returns `NO`.
+- (BOOL)drapeRevision:(uint64_t *)revision
+            inMapView:(MLNMapView *)mapView
+          withContext:(MLNStyleLayerDrawingContext)context;
+
+/// Draws the layer's part inside a Web Mercator tile into the terrain's texture for it, with
+/// ``renderEncoder`` (``renderPassDesc`` is that texture's pass): `matrix` takes world Mercator (0...1 east and south, the tile's world copy included)
+/// to its clip space, as MapLibre's draped layers place it. (SatSquatch)
+- (void)drawTileWithZoom:(NSUInteger)zoom
+                       x:(NSUInteger)x
+                       y:(NSUInteger)y
+                  matrix:(MLNMatrix4)matrix
+               inMapView:(MLNMapView *)mapView;
+
 /// Forces the map view associated with this style to redraw the receiving layer,
 /// causing the ``drawInMapView:withContext:`` method to be called again.
 - (void)setNeedsDisplay;

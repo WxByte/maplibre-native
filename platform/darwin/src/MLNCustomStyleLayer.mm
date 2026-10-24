@@ -79,6 +79,19 @@ class MLNCustomLayerHost;
 - (void)drawInMapView:(MLNMapView *)mapView withContext:(MLNStyleLayerDrawingContext)context {
 }
 
+- (BOOL)drapeRevision:(uint64_t *)revision
+            inMapView:(MLNMapView *)mapView
+          withContext:(MLNStyleLayerDrawingContext)context {
+  return NO;
+}
+
+- (void)drawTileWithZoom:(NSUInteger)zoom
+                       x:(NSUInteger)x
+                       y:(NSUInteger)y
+                  matrix:(MLNMatrix4)matrix
+               inMapView:(MLNMapView *)mapView {
+}
+
 - (void)setNeedsDisplay {
   [self.mapView setNeedsRerender];
 }
@@ -166,6 +179,41 @@ public:
     if (layer.mapView) {
       [layer drawInMapView:layer.mapView withContext:drawingContext];
     }
+  }
+
+  std::optional<uint64_t> drapeRevision(
+      const mln::style::CustomLayerRenderParameters &parameters) override {
+    if (!layer || !layer.mapView) return std::nullopt;
+    uint64_t revision = 0;
+    const MLNStyleLayerDrawingContext drawingContext = MLNStyleLayerDrawingContextMake(parameters);
+    if (![layer drapeRevision:&revision inMapView:layer.mapView withContext:drawingContext]) {
+      return std::nullopt;
+    }
+    return revision;
+  }
+
+  void renderToTile(uint8_t z,
+                    uint32_t x,
+                    uint32_t y,
+                    const std::array<double, 16> &tileMatrix,
+                    const mln::style::CustomLayerRenderParameters &parameters) override {
+    if (!layer || !layer.mapView) return;
+
+#if MLN_RENDER_BACKEND_METAL
+    MTL::CommandBuffer *cmdPtr =
+        static_cast<const mln::style::mtl::CustomLayerRenderParameters &>(parameters)
+            .commandBuffer.get();
+    layer.commandBuffer = (__bridge id<MTLCommandBuffer>)cmdPtr;
+    MTL::RenderCommandEncoder *ptr =
+        static_cast<const mln::style::mtl::CustomLayerRenderParameters &>(parameters).encoder.get();
+    layer.renderEncoder = (__bridge id<MTLRenderCommandEncoder>)ptr;
+    // The terrain tile's pass, for its formats
+    layer.renderPassDesc = (__bridge MTLRenderPassDescriptor *)
+                               static_cast<const mln::style::mtl::CustomLayerRenderParameters &>(parameters)
+                                   .renderPassDesc.get();
+#endif
+
+    [layer drawTileWithZoom:z x:x y:y matrix:MLNMatrix4Make(tileMatrix) inMapView:layer.mapView];
   }
 
   void contextLost() override {}

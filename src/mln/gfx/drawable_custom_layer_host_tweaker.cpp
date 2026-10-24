@@ -14,6 +14,10 @@
 #include <mln/vulkan/render_pass.hpp>
 #endif
 
+#include <mln/util/constants.hpp>
+#include <mln/util/mat4.hpp>
+
+#include <cmath>
 #include <memory>
 
 namespace mln {
@@ -49,6 +53,52 @@ void DrawableCustomLayerHostTweaker::execute([[maybe_unused]] gfx::Drawable& dra
     // Reset the view back to our original one, just in case the CustomLayer
     // changed the viewport or Framebuffer.
     paintParameters.backend.getDefaultRenderable().getResource<gfx::RenderableResource>().bind();
+
+    context.setDirtyState();
+    context.bindGlobalUniformBuffers(*paintParameters.renderPass);
+}
+
+void DrawableCustomLayerDrapeTweaker::execute([[maybe_unused]] gfx::Drawable& drawable,
+                                              mln::PaintParameters& paintParameters) {
+    // The drape target being rendered: {z, x with its world copy, y}
+    const auto& target = paintParameters.currentDrapeTile;
+    if (target[3] == 0) {
+        return;
+    }
+    const auto z = static_cast<uint8_t>(target[0]);
+    const double n = std::exp2(static_cast<double>(z));
+    const double gx = target[1];
+    const double y = target[2];
+
+    // Flat into the tile's texture, with no depth or stencil test (as the 2D draped layers)
+    auto& context = paintParameters.context;
+    context.resetState(gfx::DepthMode::disabled(), paintParameters.colorModeForRenderPass());
+
+#if MLN_RENDER_BACKEND_METAL
+    const auto& mtlRenderPass = static_cast<mtl::RenderPass*>(paintParameters.renderPass.get());
+    mtlRenderPass->resetState();
+    style::mtl::CustomLayerRenderParameters parameters(paintParameters);
+#elif MLN_RENDER_BACKEND_VULKAN
+    style::vulkan::CustomLayerRenderParameters parameters(paintParameters);
+#else
+    style::CustomLayerRenderParameters parameters(paintParameters);
+#endif
+
+    // The draped layers' tile matrix (LayerTweaker::getTileMatrix: an orthographic 0..EXTENT tile, its clip z in
+    // the backend's range), from world Mercator
+    mat4 matrix;
+    matrix::ortho(matrix, 0, util::EXTENT, util::EXTENT, 0, 0, 1);
+#if !MLN_RENDER_BACKEND_OPENGL
+    matrix[2] = 0.5 * (matrix[2] + matrix[3]);
+    matrix[6] = 0.5 * (matrix[6] + matrix[7]);
+    matrix[10] = 0.5 * (matrix[10] + matrix[11]);
+    matrix[14] = 0.5 * (matrix[14] + matrix[15]);
+#endif
+    matrix::scale(matrix, matrix, util::EXTENT * n, util::EXTENT * n, 1);
+    matrix::translate(matrix, matrix, -gx / n, -y / n, 0);
+
+    const auto wrappedX = static_cast<uint32_t>(std::fmod(std::fmod(gx, n) + n, n));
+    host->renderToTile(z, wrappedX, static_cast<uint32_t>(y), matrix, parameters);
 
     context.setDirtyState();
     context.bindGlobalUniformBuffers(*paintParameters.renderPass);

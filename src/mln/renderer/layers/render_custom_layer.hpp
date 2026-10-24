@@ -30,6 +30,9 @@ private:
 
     bool contextDestroyed = false;
     bool needsInitialize = true;
+    // The layer group is draped onto the terrain (a tile group, a drawable per drape target), not drawn over the
+    // map (SatSquatch)
+    bool layerGroupDraped = false;
     std::shared_ptr<style::CustomLayerHost> host;
 };
 

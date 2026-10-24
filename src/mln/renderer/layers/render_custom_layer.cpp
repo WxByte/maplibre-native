@@ -10,6 +10,7 @@
 
 #include <mln/gfx/context.hpp>
 #include <mln/renderer/layer_group.hpp>
+#include <mln/renderer/render_terrain.hpp>
 #include <mln/gfx/drawable_custom_layer_host_tweaker.hpp>
 #include <mln/gfx/drawable_builder.hpp>
 
@@ -54,9 +55,10 @@ void initializeHost(const std::shared_ptr<style::CustomLayerHost>& host, [[maybe
 #endif
 }
 
-void callPreRender(const std::shared_ptr<style::CustomLayerHost>& host,
-                   gfx::Context& context,
-                   const PaintParameters& paintParameters) {
+/// Calls preRender, and asks a host on a map with terrain whether it drapes (SatSquatch)
+std::optional<uint64_t> callPreRender(const std::shared_ptr<style::CustomLayerHost>& host,
+                                      gfx::Context& context,
+                                      const PaintParameters& paintParameters) {
 #if MLN_RENDER_BACKEND_METAL
     style::mtl::CustomLayerRenderParameters parameters(paintParameters);
 #elif MLN_RENDER_BACKEND_VULKAN
@@ -65,6 +67,10 @@ void callPreRender(const std::shared_ptr<style::CustomLayerHost>& host,
     style::CustomLayerRenderParameters parameters(paintParameters);
 #endif
     host->preRender(context, parameters);
+    if (!paintParameters.terrain || !paintParameters.terrain->getFrameMeshCover()) {
+        return std::nullopt;
+    }
+    return host->drapeRevision(parameters);
 }
 
 } // namespace
@@ -109,16 +115,6 @@ void RenderCustomLayer::update([[maybe_unused]] gfx::ShaderRegistry& shaders,
                                [[maybe_unused]] const PaintParameters& paintParameters,
                                [[maybe_unused]] const RenderTree& renderTree,
                                [[maybe_unused]] UniqueChangeRequestVec& changes) {
-    // create layer group
-    if (!layerGroup) {
-        if (auto layerGroup_ = context.createLayerGroup(
-                layerIndex, /*initialCapacity=*/1, getID(), true)) { // TODO: make render to terrain optional?
-            setLayerGroup(std::move(layerGroup_), changes);
-        }
-    }
-
-    auto* localLayerGroup = static_cast<LayerGroup*>(layerGroup.get());
-
     // check if host changed and update
     bool hostChanged = (host != impl(baseImpl).host);
     if (hostChanged) {
@@ -135,8 +131,67 @@ void RenderCustomLayer::update([[maybe_unused]] gfx::ShaderRegistry& shaders,
         needsInitialize = false;
     }
 
-    // call the pre-render
-    MBGL_CHECK_ERROR(callPreRender(host, context, paintParameters));
+    // call the pre-render; draped onto the terrain while the host asks (SatSquatch)
+    const std::optional<uint64_t> drape = callPreRender(host, context, paintParameters);
+    const bool draped = drape.has_value();
+    if (layerGroup && draped != layerGroupDraped) {
+        removeAllDrawables();
+        setLayerGroup(nullptr, changes);
+    }
+
+    // create layer group: drawn over the map, or into the terrain's tile textures (a tile group, a drawable per
+    // drape target)
+    if (!layerGroup) {
+        LayerGroupBasePtr layerGroup_;
+        if (draped) {
+            layerGroup_ = context.createTileLayerGroup(layerIndex, /*initialCapacity=*/64, getID(), true);
+        } else {
+            layerGroup_ = context.createLayerGroup(layerIndex, /*initialCapacity=*/1, getID(), false);
+        }
+        if (!layerGroup_) {
+            return;
+        }
+        setLayerGroup(std::move(layerGroup_), changes);
+        layerGroupDraped = draped;
+        hostChanged = true;
+    }
+
+    if (draped) {
+        auto* tileGroup = static_cast<TileLayerGroup*>(layerGroup.get());
+        tileGroup->setDrapeRevision(drape);
+        const auto& cover = *paintParameters.terrain->getFrameMeshCover();
+        // A drawable per drape target, as the cover changes (the new host's anew)
+        if (hostChanged) {
+            tileGroup->clearDrawables();
+        }
+        stats.drawablesRemoved += tileGroup->removeDrawablesIf([&](gfx::Drawable& drawable) {
+            return !drawable.getTileID() || !cover.contains(drawable.getTileID()->toUnwrapped());
+        });
+        std::set<UnwrappedTileID> drawn;
+        tileGroup->visitDrawables([&](const gfx::Drawable& drawable) {
+            if (drawable.getTileID()) {
+                drawn.insert(drawable.getTileID()->toUnwrapped());
+            }
+        });
+        const auto tweaker = std::make_shared<gfx::DrawableCustomLayerDrapeTweaker>(host);
+        for (const auto& tile : cover) {
+            if (drawn.contains(tile)) {
+                continue;
+            }
+            std::unique_ptr<gfx::DrawableBuilder> builder = context.createDrawableBuilder(getID());
+            auto& drawable = builder->getCurrentDrawable(true);
+            drawable->setIsCustom(true);
+            drawable->setRenderPass(RenderPass::Translucent);
+            drawable->addTweaker(tweaker);
+            const OverscaledTileID tileID(tile.canonical.z, tile.wrap, tile.canonical);
+            drawable->setTileID(tileID);
+            tileGroup->addDrawable(RenderPass::Translucent, tileID, std::move(drawable));
+            ++stats.drawablesAdded;
+        }
+        return;
+    }
+
+    auto* localLayerGroup = static_cast<LayerGroup*>(layerGroup.get());
 
     // create drawable
     if (localLayerGroup->getDrawableCount() == 0 || hostChanged) {

@@ -393,6 +393,10 @@ void Renderer::Impl::render(const RenderTree& renderTree, const std::shared_ptr<
                             util::hash_combine(h, bucket->getID().id());
                         }
                     }
+                    // A draped custom layer's picture changes without its tiles (SatSquatch)
+                    if (const auto& revision = layerGroup.getDrapeRevision()) {
+                        util::hash_combine(h, *revision);
+                    }
                     util::hash_combine(signature, h);
                     drapedTiles.emplace_back(tile, h);
                 });

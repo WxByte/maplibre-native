@@ -3,6 +3,10 @@
 #include <mln/style/layers/custom_layer_init_parameters.hpp>
 #include <mln/style/layers/custom_layer_render_parameters.hpp>
 
+#include <array>
+#include <cstdint>
+#include <optional>
+
 namespace mln {
 
 namespace gfx {
@@ -45,6 +49,27 @@ public:
      * above your custom layer.
      */
     virtual void render(const mln::style::CustomLayerRenderParameters&) = 0;
+
+    /**
+     * Draping onto the 3D terrain (SatSquatch). While the map has terrain, called each frame before rendering: a
+     * revision of what the layer draws, to drape it into the terrain's tile textures in its place among the draped
+     * layers (renderToTile, each tile) rather than draw it over the map (render); none keeps render. A new
+     * revision redraws those textures, every draped layer's, so it should change only with the picture.
+     */
+    virtual std::optional<uint64_t> drapeRevision(const mln::style::CustomLayerRenderParameters&) {
+        return std::nullopt;
+    }
+
+    /**
+     * Draw the layer's part inside a Web Mercator tile (z, x, y) into that tile's terrain texture, bound with its
+     * viewport: `tileMatrix` takes world Mercator (0..1 east and south; the tile's world copy included) to its clip
+     * space, as MapLibre's draped layers place it. Leave the bound framebuffer and the viewport as they are. (SatSquatch)
+     */
+    virtual void renderToTile(uint8_t /*z*/,
+                              uint32_t /*x*/,
+                              uint32_t /*y*/,
+                              const std::array<double, 16>& /*tileMatrix*/,
+                              const mln::style::CustomLayerRenderParameters&) {}
 
     /**
      * Called when the system has destroyed the underlying GL/Metal context. The

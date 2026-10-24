@@ -23,6 +23,11 @@ CustomLayerRenderParameters::CustomLayerRenderParameters(const mln::PaintParamet
     if (paintParameters.renderPass) {
         const mln::mtl::RenderPass& metalRenderPass = static_cast<mln::mtl::RenderPass&>(*paintParameters.renderPass);
         encoder = metalRenderPass.getMetalEncoder();
+        // The pass's own target: the screen, or a terrain tile's texture while draping (SatSquatch)
+        const auto& target = metalRenderPass.getDescriptor().renderable.getResource<mln::mtl::RenderableResource>();
+        if (const auto& desc = target.getRenderPassDescriptor()) {
+            renderPassDesc = desc;
+        }
     }
 }
 

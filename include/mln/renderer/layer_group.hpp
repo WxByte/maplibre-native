@@ -9,6 +9,7 @@
 
 #include <functional>
 #include <memory>
+#include <optional>
 #include <string>
 #include <set>
 #include <vector>
@@ -113,6 +114,11 @@ public:
 
     bool shouldRenderToTerrain() { return renderToTerrain; }
 
+    /// A draped custom layer's revision of what it draws (SatSquatch): folded into the drape's content signatures,
+    /// so a new one redraws the terrain's tile textures.
+    const std::optional<uint64_t>& getDrapeRevision() const { return drapeRevision; }
+    void setDrapeRevision(std::optional<uint64_t> value) { drapeRevision = value; }
+
     /// Set observer
     void setObserver(gfx::ContextObserver*);
 
@@ -124,6 +130,7 @@ protected:
     std::string name;
     bool renderToTerrain;
     gfx::ContextObserver* observer;
+    std::optional<uint64_t> drapeRevision;
 };
 
 /**
