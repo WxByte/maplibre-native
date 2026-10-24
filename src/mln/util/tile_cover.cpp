@@ -16,6 +16,8 @@
 #include <functional>
 #include <limits>
 #include <list>
+#include <map>
+#include <set>
 
 using namespace std::numbers;
 
@@ -843,6 +845,79 @@ std::set<UnwrappedTileID> frustumCull(const TileCoverParameters& state, const st
         }
     }
     return result;
+}
+
+std::vector<OverscaledTileID> dilateElevatedCover(const TileCoverParameters& state,
+                                                  const std::vector<OverscaledTileID>& tiles) {
+    // One-ring cover dilation. tileCover is a top-down DFS that only descends into tiles
+    // whose (sea-level) ancestor intersects the frustum, so a frontier tile whose terrain
+    // rises into view but whose flat ancestor was culled is never even visited - it stays
+    // out of the cover, and the terrain draws a skirt with nothing behind it, until a
+    // camera nudge shifts the frustum and pulls it in. Add every 8-neighbour of the cover,
+    // then keep only those whose elevation-extended bounds still intersect the frustum
+    // (frustumCull, using the DEM provider's conservative fallback range for the
+    // not-yet-loaded neighbours). The elevation sign decides which neighbours survive, so
+    // this is correct for terrain above OR below sea level (bathymetry) without hardcoding
+    // a direction; the frustum trim stops it from tripling the cover like a blind ring
+    // would. Ring after ring while new tiles still survive (SatSquatch): with an exaggerated
+    // relief the ground the screen's near edge meets can lie more than a tile's width from the
+    // flat cover's edge, so one ring left the tiles nearest the camera out.
+    constexpr int maxRings = 4;
+    std::map<UnwrappedTileID, OverscaledTileID> ids;
+    for (const auto& id : tiles) {
+        ids.emplace(id.toUnwrapped(), id);
+    }
+    std::map<UnwrappedTileID, OverscaledTileID> frontier = ids;
+    bool added = false;
+    for (int ring = 0; ring < maxRings && !frontier.empty(); ++ring) {
+        std::map<UnwrappedTileID, OverscaledTileID> neighbours;
+        for (const auto& [unwrapped, id] : frontier) {
+            const int32_t numTiles = 1 << unwrapped.canonical.z;
+            for (int dy = -1; dy <= 1; ++dy) {
+                for (int dx = -1; dx <= 1; ++dx) {
+                    if (dx == 0 && dy == 0) continue;
+                    const int ny = static_cast<int>(unwrapped.canonical.y) + dy;
+                    if (ny < 0 || ny >= numTiles) continue; // nothing past the poles
+                    int nx = static_cast<int>(unwrapped.canonical.x) + dx;
+                    int nwrap = unwrapped.wrap;
+                    if (nx < 0) {
+                        nx += numTiles;
+                        --nwrap;
+                    } else if (nx >= numTiles) {
+                        nx -= numTiles;
+                        ++nwrap;
+                    }
+                    const CanonicalTileID canonical(
+                        unwrapped.canonical.z, static_cast<uint32_t>(nx), static_cast<uint32_t>(ny));
+                    const UnwrappedTileID neighbour(static_cast<int16_t>(nwrap), canonical);
+                    if (!ids.contains(neighbour)) {
+                        neighbours.emplace(neighbour,
+                                           OverscaledTileID(id.overscaledZ, static_cast<int16_t>(nwrap), canonical));
+                    }
+                }
+            }
+        }
+        std::set<UnwrappedTileID> candidates;
+        for (const auto& entry : neighbours) {
+            candidates.insert(entry.first);
+        }
+        frontier.clear();
+        for (const auto& unwrapped : frustumCull(state, candidates)) {
+            const auto& id = neighbours.at(unwrapped);
+            ids.emplace(unwrapped, id);
+            frontier.emplace(unwrapped, id);
+            added = true;
+        }
+    }
+    if (!added) {
+        return tiles;
+    }
+    std::vector<OverscaledTileID> out;
+    out.reserve(ids.size());
+    for (const auto& entry : ids) {
+        out.push_back(entry.second);
+    }
+    return out;
 }
 
 std::vector<UnwrappedTileID> tileCover(const LatLngBounds& bounds_, uint8_t z) {

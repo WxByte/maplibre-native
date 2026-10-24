@@ -124,50 +124,17 @@ std::set<UnwrappedTileID> RenderTerrain::computeMeshCover(
         return out;
     }
     const int32_t idealZoom = std::min<int32_t>(zoomRange.max, overscaledZoom);
-    for (const auto& id : util::tileCover(
-             coverParams, static_cast<uint8_t>(idealZoom), zoomRange, static_cast<uint8_t>(overscaledZoom))) {
+    // One-ring cover dilation (util::dilateElevatedCover): a frontier tile whose terrain rises into view but
+    // whose flat ancestor tileCover culled is added back, as the terrain's DEM source adds it to its own cover,
+    // so the tile has a DEM to draw with rather than the flat placeholder. The globe's own cover takes in the
+    // tiles over its horizon, and the dilation's frustum test is the flat map's.
+    auto cover = util::tileCover(
+        coverParams, static_cast<uint8_t>(idealZoom), zoomRange, static_cast<uint8_t>(overscaledZoom));
+    if (!state.isGlobeRendering()) {
+        cover = util::dilateElevatedCover(coverParams, cover);
+    }
+    for (const auto& id : cover) {
         out.insert(id.toUnwrapped());
-    }
-
-    // One-ring cover dilation. tileCover is a top-down DFS that only descends into tiles
-    // whose (sea-level) ancestor intersects the frustum, so a frontier tile whose terrain
-    // rises into view but whose flat ancestor was culled is never even visited - it stays
-    // out of the cover, and the terrain draws a skirt with nothing behind it, until a
-    // camera nudge shifts the frustum and pulls it in. Add every 8-neighbour of the cover,
-    // then keep only those whose elevation-extended bounds still intersect the frustum
-    // (frustumCull, using the DEM provider's conservative fallback range for the
-    // not-yet-loaded neighbours). The elevation sign decides which neighbours survive, so
-    // this is correct for terrain above OR below sea level (bathymetry) without hardcoding
-    // a direction; the frustum trim stops it from tripling the cover like a blind ring
-    // would. Drop the frustumCull line to fall back to a pure uniform 1-ring dilation.
-    // The globe's own cover takes in the tiles over its horizon, and the frustum test below is the flat map's
-    if (state.isGlobeRendering()) {
-        return out;
-    }
-    std::set<UnwrappedTileID> dilated = out;
-    for (const auto& id : out) {
-        const int32_t numTiles = 1 << id.canonical.z;
-        for (int dy = -1; dy <= 1; ++dy) {
-            for (int dx = -1; dx <= 1; ++dx) {
-                if (dx == 0 && dy == 0) continue;
-                const int ny = static_cast<int>(id.canonical.y) + dy;
-                if (ny < 0 || ny >= numTiles) continue; // nothing past the poles
-                int nx = static_cast<int>(id.canonical.x) + dx;
-                int nwrap = id.wrap;
-                if (nx < 0) {
-                    nx += numTiles;
-                    --nwrap;
-                } else if (nx >= numTiles) {
-                    nx -= numTiles;
-                    ++nwrap;
-                }
-                dilated.emplace(static_cast<int16_t>(nwrap),
-                                CanonicalTileID(id.canonical.z, static_cast<uint32_t>(nx), static_cast<uint32_t>(ny)));
-            }
-        }
-    }
-    if (dilated.size() != out.size()) {
-        out = util::frustumCull(coverParams, dilated);
     }
     return out;
 }

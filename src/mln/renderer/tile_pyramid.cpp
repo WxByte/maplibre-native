@@ -162,6 +162,13 @@ void TilePyramid::update(const std::vector<Immutable<style::LayerProperties>>& l
         }
 
         idealTiles = util::tileCover(tileCoverParameters, idealZoom, zoomRange, tileZoom);
+        // Under terrain a DEM takes in the tiles whose relief rises into view, as the terrain's mesh does
+        // (RenderTerrain::computeMeshCover): else those mesh tiles have no DEM to draw with, and lie flat at
+        // sea level under their neighbours' skirts. The flat map's dilation (SatSquatch)
+        if (type == SourceType::RasterDEM && parameters.elevationProvider &&
+            !parameters.transformState.isGlobeRendering()) {
+            idealTiles = util::dilateElevatedCover(tileCoverParameters, idealTiles);
+        }
         if (parameters.mode == MapMode::Tile && type != SourceType::Raster && type != SourceType::RasterDEM &&
             idealTiles.size() > 1) {
             mln::Log::Warning(mln::Event::General,

@@ -82,6 +82,13 @@ std::vector<OverscaledTileID> tileCover(const TileCoverParameters& state,
 /// covers - so they render empty. Culling the mesh set to the frustum drops that
 /// off-screen area. Uses params.elevationProvider the same way tileCover does.
 std::set<UnwrappedTileID> frustumCull(const TileCoverParameters& state, const std::set<UnwrappedTileID>& tiles);
+
+/// The cover with its tiles' neighbours, ring by ring, whose elevation-extended bounds meet the frustum: the terrain rising into
+/// view from tiles whose flat ancestors tileCover culled. For the terrain's mesh and the DEM it draws with alike, so
+/// each mesh tile has a DEM of its own to load. The flat map's (a Mercator frustum). (SatSquatch, from
+/// RenderTerrain::computeMeshCover)
+std::vector<OverscaledTileID> dilateElevatedCover(const TileCoverParameters& state,
+                                                  const std::vector<OverscaledTileID>& tiles);
 std::vector<UnwrappedTileID> tileCover(const LatLngBounds&, uint8_t z);
 std::vector<UnwrappedTileID> tileCover(const Geometry<double>&, uint8_t z);
 
