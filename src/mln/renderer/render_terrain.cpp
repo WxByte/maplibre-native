@@ -290,7 +290,8 @@ void RenderTerrain::update(RenderOrchestrator& orchestrator,
                 existing->second.lastUsed = demUpdateCounter;
             } else if (auto texture = createDEMTexture(context, *demData)) {
                 // Keep the texture available for elevation sampling by non-draped layers
-                demTextures[renderTile.id] = {texture, demData->dim, demUpdateCounter};
+                demTextures[renderTile.id] = {
+                    texture, demData->dim, demUpdateCounter, std::make_shared<const DEMData>(*demData)};
 #if MLN_RENDER_BACKEND_OPENGL
                 // Also pack this tile's DEM into the array for the (upcoming) instanced
                 // depth pass. Additive: the per-tile texture above is still the fallback.
@@ -321,11 +322,21 @@ void RenderTerrain::update(RenderOrchestrator& orchestrator,
     const size_t maxMeshTiles = updateParameters ? terrainLoadBudget(updateParameters->terrainLoadMode).maxMeshTiles
                                                  : 0;
     if (maxMeshTiles > 0 && meshTiles.size() > maxMeshTiles) {
-        // Map center in normalized web-mercator [0,1] (standard projection)
+        // Kept from the camera out (SatSquatch): the point under the eye in normalized web-mercator [0,1],
+        // so the tiles dropped are the horizon's. The map centre in the middle of a pitched view ranked the
+        // tiles at the bottom corners (the nearest the camera, the largest on screen) as far as the horizon's,
+        // and a tall screen lost them: holes the skirts behind showed through. The centre on the globe, or
+        // without the free camera.
         const LatLng center = state.getLatLng();
-        const double cx = center.longitude() / 360.0 + 0.5;
+        double cx = center.longitude() / 360.0 + 0.5;
         const double latRad = util::deg2rad(center.latitude());
-        const double cy = 0.5 - std::log(std::tan(M_PI / 4.0 + latRad / 2.0)) / (2.0 * M_PI);
+        double cy = 0.5 - std::log(std::tan(M_PI / 4.0 + latRad / 2.0)) / (2.0 * M_PI);
+        if (!state.isGlobeRendering()) {
+            if (const auto eye = state.getFreeCameraOptions().position) {
+                cx = (*eye)[0];
+                cy = (*eye)[1];
+            }
+        }
 
         const auto tileDist2 = [&](const UnwrappedTileID& id) {
             const double scale = static_cast<double>(1u << id.canonical.z);
@@ -706,10 +717,14 @@ std::optional<float> RenderTerrain::sampleElevation(const UnwrappedTileID& tileI
     const float xInDem = (off.dx * util::EXTENT + x) / off.scale;
     const float yInDem = (off.dy * util::EXTENT + y) / off.scale;
 
+    return demBilinear(demData, xInDem / util::EXTENT, yInDem / util::EXTENT);
+}
+
+float RenderTerrain::demBilinear(const DEMData& demData, float u, float v) {
     // Bilinear interpolation of the DEM texels, as in maplibre-gl-js Terrain.getDEMElevation
     const float dim = static_cast<float>(demData.dim);
-    const float px = util::clamp(xInDem / util::EXTENT * dim, 0.0f, dim - 1.0f);
-    const float py = util::clamp(yInDem / util::EXTENT * dim, 0.0f, dim - 1.0f);
+    const float px = util::clamp(u * dim, 0.0f, dim - 1.0f);
+    const float py = util::clamp(v * dim, 0.0f, dim - 1.0f);
     const auto x0 = static_cast<int32_t>(std::floor(px));
     const auto y0 = static_cast<int32_t>(std::floor(py));
     const float fx = px - static_cast<float>(x0);
@@ -728,31 +743,34 @@ float RenderTerrain::getElevationWithExaggeration(const UnwrappedTileID& tileID,
 }
 
 double RenderTerrain::queryElevation(const LatLng& latLng) const {
-    constexpr double none = std::numeric_limits<double>::quiet_NaN();
-    if (!demSource) {
-        return none;
-    }
-    // As getElevationForLatLng: at the depth of the finest DEM tile loaded
-    int sampleZoom = -1;
-    for (const auto& renderTile : *demSource->getRawRenderTiles()) {
-        if (renderTile.getTile().kind == Tile::Kind::RasterDEM) {
-            sampleZoom = std::max(sampleZoom, static_cast<int>(renderTile.id.canonical.z));
+    // What the mesh shows: the deepest DEM it has over the point (a tile's own, else an ancestor's, as
+    // update binds them), whichever world copy it was cached for
+    const double wx = latLng.longitude() / util::DEGREES_MAX + 0.5;
+    const double wy = Projection::project(latLng, 0).y;
+    const DEMTextureEntry* best = nullptr;
+    int bestZoom = -1;
+    double u = 0;
+    double v = 0;
+    for (const auto& [id, entry] : demTextures) {
+        const int z = id.canonical.z;
+        if (!entry.dem || z <= bestZoom) {
+            continue;
         }
+        const double n = std::exp2(z);
+        const double tx = std::floor(wx * n);
+        const double ty = std::floor(wy * n);
+        if (ty != id.canonical.y || std::fmod(std::fmod(tx, n) + n, n) != id.canonical.x) {
+            continue;
+        }
+        best = &entry;
+        bestZoom = z;
+        u = wx * n - tx;
+        v = wy * n - ty;
     }
-    if (sampleZoom < 0) {
-        return none;
+    if (!best) {
+        return std::numeric_limits<double>::quiet_NaN();
     }
-    const auto point = Projection::project(latLng, sampleZoom);
-    const auto tx = static_cast<int64_t>(std::floor(point.x));
-    const auto ty = static_cast<int64_t>(std::floor(point.y));
-    if (ty < 0 || static_cast<double>(ty) >= std::pow(2.0, sampleZoom)) {
-        return none; // past a pole
-    }
-    const UnwrappedTileID sampleTile(static_cast<uint8_t>(sampleZoom), tx, ty);
-    const auto height = sampleElevation(sampleTile,
-                                        static_cast<float>((point.x - static_cast<double>(tx)) * util::EXTENT),
-                                        static_cast<float>((point.y - static_cast<double>(ty)) * util::EXTENT));
-    return height ? *height : none;
+    return demBilinear(*best->dem, static_cast<float>(u), static_cast<float>(v));
 }
 
 std::vector<double> RenderTerrain::queryElevations(const std::vector<LatLng>& latLngs) const {

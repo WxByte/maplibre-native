@@ -178,7 +178,10 @@ void Map::Impl::onUpdate() {
         .tileLodScale = tileLodScale,
         .tileLodPitchThreshold = tileLodPitchThreshold,
         .tileLodZoomShift = tileLodZoomShift,
-        .tileLodMode = tileLodMode,
+        // With terrain the covers' zoom varies with the distance from the camera, as GL JS's does whenever
+        // terrain is present (unless the app chose a mode): one zoom over a pitched view is far more tiles,
+        // DEM, mesh and drape targets alike. (SatSquatch)
+        .tileLodMode = terrainImpl && tileLodMode == TileLodMode::Default ? TileLodMode::Adaptive : tileLodMode,
         .subdivisionGranularity = mode == MapMode::Tile || !util::GLOBE_ENABLED
                                       ? SubdivisionGranularitySetting::none()
                                       : style->impl->getProjection()->impl->getSubdivisionGranularity(),

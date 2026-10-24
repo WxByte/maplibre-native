@@ -145,6 +145,9 @@ public:
     /// getElevation, or nullopt where no DEM covers the coordinate yet.
     std::optional<float> sampleElevation(const UnwrappedTileID& tileID, float x, float y) const;
 
+    /// A DEM's height (m) at a point of its tile (0..1 each way), bilinear between its texels.
+    static float demBilinear(const DEMData& demData, float u, float v);
+
     /**
      * @brief Get elevation with exaggeration applied
      * @param tileID The tile containing the coordinate
@@ -169,8 +172,9 @@ public:
     /**
      * @brief Terrain heights under geographic positions, for the map's own API (SatSquatch)
      *
-     * As getElevationForLatLng, but without the exaggeration, and NaN where no DEM covers a
-     * position yet (rather than 0, which is also sea level).
+     * The height the mesh draws (m, without the exaggeration): from the deepest DEM it has over the
+     * position (its tile's own, else an ancestor's), bilinear; NaN where it has none yet (rather than
+     * 0, which is also sea level).
      */
     double queryElevation(const LatLng& latLng) const;
     std::vector<double> queryElevations(const std::vector<LatLng>& latLngs) const;
@@ -404,6 +408,9 @@ private:
         std::shared_ptr<gfx::Texture2D> texture;
         int32_t dim;
         uint64_t lastUsed = 0;
+        // Its heights (the image shared with the source's tile while it has it), for queryElevation:
+        // the cache is what the mesh draws with, ancestors included. (SatSquatch)
+        std::shared_ptr<const DEMData> dem;
     };
     std::map<UnwrappedTileID, DEMTextureEntry> demTextures;
     // Retention cap for demTextures (~1MB per 514x514 DEM texture); entries not

@@ -23,8 +23,15 @@ void DrawableCustomLayerHostTweaker::execute([[maybe_unused]] gfx::Drawable& dra
                                              mln::PaintParameters& paintParameters) {
     // custom drawing
     auto& context = paintParameters.context;
-    context.resetState(paintParameters.depthModeForSublayer(0, gfx::DepthMaskType::ReadOnly),
-                       paintParameters.colorModeForRenderPass());
+    // With 3D terrain the layer draws in the 3D layers' depth range, as the terrain mesh does, so what it
+    // draws can test against the ground (else, on GL, the range is its 2D sublayer's single depth, behind
+    // all of it). (SatSquatch)
+    auto depthMode = paintParameters.depthModeForSublayer(0, gfx::DepthMaskType::ReadOnly);
+    if (paintParameters.terrain) {
+        depthMode = paintParameters.depthModeFor3D();
+        depthMode.mask = gfx::DepthMaskType::ReadOnly;
+    }
+    context.resetState(depthMode, paintParameters.colorModeForRenderPass());
 
 #if MLN_RENDER_BACKEND_METAL
     const auto& mtlRenderPass = static_cast<mtl::RenderPass*>(paintParameters.renderPass.get());
