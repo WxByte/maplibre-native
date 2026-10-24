@@ -862,7 +862,7 @@ std::vector<OverscaledTileID> dilateElevatedCover(const TileCoverParameters& sta
     // would. Ring after ring while new tiles still survive (SatSquatch): with an exaggerated
     // relief the ground the screen's near edge meets can lie more than a tile's width from the
     // flat cover's edge, so one ring left the tiles nearest the camera out.
-    constexpr int maxRings = 4;
+    constexpr int maxRings = 2;
     std::map<UnwrappedTileID, OverscaledTileID> ids;
     for (const auto& id : tiles) {
         ids.emplace(id.toUnwrapped(), id);

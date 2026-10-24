@@ -82,7 +82,10 @@ constexpr TerrainLoadBudget terrainLoadBudget(TerrainLoadMode mode) {
             return {8, 4, 24};
         case TerrainLoadMode::Quality:
         default:
-            return {0, 0, 64}; // no per-frame budget, generous tile cap
+            // No per-frame budget, a generous tile cap. 128 (SatSquatch; 64 before): a pitched view's cover
+            // under 3x relief, its near edge dilated (util::dilateElevatedCover), passed 64 and lost the
+            // horizon, though every cover tile keeps its drape target either way (Renderer::Impl).
+            return {0, 0, 128};
     }
 }
 
