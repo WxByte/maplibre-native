@@ -41,14 +41,28 @@ Android (NDK 28.2, CMake ≥ 3.24, JDK 21), into a Maven repository:
     ./gradlew -Pmaplibre.abis=arm64-v8a :MapLibreAndroid:publishOpenglReleasePublications \
         -PpublicationRepositoryUrl=file://$HOME/maplibre-native-maven
 
-(`-Pmaplibre.abis` left out builds every ABI, for store builds.) The version is `platform/android/VERSION`.
+(`-Pmaplibre.abis` left out builds every ABI, as releases do.) The version is `platform/android/VERSION`.
 
-iOS (Bazel through bazelisk), an XCFramework:
+iOS (Bazel through bazelisk), an XCFramework (`bazel-bin/platform/ios/MapLibre.dynamic.xcframework.zip`):
 
     cd platform/ios
     bazel build --compilation_mode=opt --//:renderer=metal --//:plugins=false \
         "--features=dead_strip,thin_lto" --objc_enable_binary_stripping --apple_generate_dsym \
         //platform/ios:MapLibre.dynamic --embed_label=maplibre_ios_$(cat VERSION)
 
-It's unzipped into the Swift package at `~/maplibre-native-dist` (a binary target by path), which the
-app's `spmSpec` points at. The simulator slice is arm64 only (`platform/ios/BUILD.bazel`).
+The simulator slice is arm64 only (`platform/ios/BUILD.bazel`).
+
+## Releases
+
+`platform/satsquatch-release.sh VERSION` builds both from the committed branch and publishes them, public on
+GitHub so any machine (EAS too) builds the app without this checkout:
+
+- iOS: [WxByte/maplibre-native-dist](https://github.com/WxByte/maplibre-native-dist), a Swift package whose
+  binary target is the version's release asset (`MapLibre.xcframework.zip`) by URL and checksum. The app's
+  `spmSpec` (app.json, ios/Podfile) asks for its exact version.
+- Android: [WxByte/maplibre-native-maven](https://github.com/WxByte/maplibre-native-maven), a Maven
+  repository (`org.maplibre.gl:android-sdk-opengl`) the app's Gradle reads from
+  `https://raw.githubusercontent.com/WxByte/maplibre-native-maven/main`.
+
+Versions are `2026.10.19-globe-terrain-ss.N` (upstream's base, then ours), a new one per release: SwiftPM
+caches a version's contents.
