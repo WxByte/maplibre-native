@@ -71,10 +71,13 @@ void TerrainLayerTweaker::execute(LayerGroupBase& layerGroup, const PaintParamet
         // pixels elevation scale (pixelsPerMeter) is baked into the projection matrix
         // in TransformState::getProjMatrix, so it applies here and to the elevated
         // symbol / circle layers consistently, matching maplibre-gl-js.
-        mat4 matrix = parameters.matrixForTile(tileID);
+        // The flat map's matrix on the globe too (SatSquatch): matrixForTile is the projection's main matrix, the
+        // sphere's there, and as the fallback the shader blends to between zoom 11 and 12 it threw the mesh off
+        // the screen, the map black but for its labels.
+        mat4 matrix = parameters.projectionDataForTile(tileID).fallbackMatrix;
 
 #if !MLN_RENDER_BACKEND_OPENGL
-        // matrixForTile builds a GL-convention projection (clip z in [-1, 1]); Vulkan,
+        // The flat map's matrix is a GL-convention projection (clip z in [-1, 1]); Vulkan,
         // Metal and WebGPU clip to [0, 1]. Remap clip z from [-1, 1] to [0, 1] the usual
         // way, z' = (z + w) / 2, so terrain that projects into the near half of the GL
         // clip volume (z < 0) is not clipped away on those backends. Matches

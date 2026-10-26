@@ -32,6 +32,7 @@ public:
     explicit DEMElevationProvider(const RenderSource* demSource, double exaggeration);
 
     std::optional<Range<double>> getTileElevationRange(const CanonicalTileID&) const override;
+    std::optional<Range<double>> getViewElevationRange() const override { return loadedRange; }
 
 private:
     const RenderSource* demSource;

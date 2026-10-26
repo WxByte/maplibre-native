@@ -47,6 +47,10 @@ public:
     /// The lowest and highest elevation within the tile, in meters, or nullopt when
     /// no DEM covering the tile is loaded (the caller then falls back to flat).
     virtual std::optional<Range<double>> getTileElevationRange(const CanonicalTileID&) const = 0;
+
+    /// The lowest and highest elevation of all the terrain loaded in view, in meters, or nullopt when none is
+    /// (SatSquatch: the globe's cover takes it for every tile)
+    virtual std::optional<Range<double>> getViewElevationRange() const { return std::nullopt; }
 };
 
 struct TileCoverParameters {

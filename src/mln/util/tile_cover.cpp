@@ -292,11 +292,11 @@ vec3 toSphere(double x, double y, const CanonicalTileID& tile) {
     return VerticalPerspectiveProjection::tileCoordinatesToSphere({x, y}, UnwrappedTileID(0, tile));
 }
 
-// `elevation` in meters grows the volume above the sphere's surface.
-ConvexVolume tileBoundingVolume(const CanonicalTileID& tile, double elevation) {
+// The volume spans the heights from `minElevation` to `maxElevation` in meters about the sphere's surface.
+ConvexVolume tileBoundingVolume(const CanonicalTileID& tile, double minElevation, double maxElevation) {
     // Distances from the planet's center in a world where the surface is at 1.
-    const double minRadius = std::min(0.0, elevation) / util::EARTH_RADIUS_M + 1.0;
-    const double maxRadius = std::max(0.0, elevation) / util::EARTH_RADIUS_M + 1.0;
+    const double minRadius = minElevation / util::EARTH_RADIUS_M + 1.0;
+    const double maxRadius = maxElevation / util::EARTH_RADIUS_M + 1.0;
     if (tile.z == 0) {
         return aabbVolume({{-maxRadius, -maxRadius, -maxRadius}}, {{maxRadius, maxRadius, maxRadius}});
     }
@@ -494,6 +494,19 @@ std::vector<OverscaledTileID> tileCover(const TileCoverParameters& state,
     const TileZoomFunction tileZoom(fovDegrees);
     const double cullingElevation = elevationForTileCulling(transform.getPitch() * 180.0 / std::numbers::pi,
                                                             fovDegrees);
+    // Under terrain the volumes take in the heights of the terrain loaded in view (SatSquatch): relief rising
+    // towards the camera fills the screen's near edge where the sea-level sphere is out of view, and its tiles were
+    // culled, the skirts behind showing there. The view's range, not each tile's: a tile's own DEM, narrower than
+    // the range it came in on, dropped it, its DEM then left the source and the wider range took it back, the cover
+    // flipping every frame (and the terrain with it).
+    double minElevation = 0.0;
+    double maxElevation = cullingElevation;
+    if (state.elevationProvider) {
+        if (const auto range = state.elevationProvider->getViewElevationRange()) {
+            minElevation = std::min(minElevation, range->min);
+            maxElevation = std::max(maxElevation, range->max);
+        }
+    }
 
     std::vector<Node> stack;
     std::vector<ResultTile> result;
@@ -505,7 +518,7 @@ std::vector<OverscaledTileID> tileCover(const TileCoverParameters& state,
         Node node = stack.back();
         stack.pop_back();
         const CanonicalTileID tile(node.zoom, node.x, node.y);
-        const ConvexVolume volume = tileBoundingVolume(tile, cullingElevation);
+        const ConvexVolume volume = tileBoundingVolume(tile, minElevation, maxElevation);
 
         if (!node.fullyVisible) {
             const IntersectionResult intersection = isTileVisible(frustum, volume, horizon);

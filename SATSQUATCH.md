@@ -15,6 +15,12 @@ MapLibre React Native). Neither upstream release has both.
   (`projectTileFor3D` through each tile's `ProjectionUBO`), the draped layers render into the terrain's tiles
   through the drape matrix alone (`LayerTweaker::drapeProjectionData`), the mesh writes the ground's depth
   instead of the sea-level sphere, and the camera's centre anchors on the terrain on the flat map only.
+  Under terrain the globe's tile covers take in the heights of the terrain loaded in view
+  (`util::TileElevationProvider::getViewElevationRange`, as GL JS takes the terrain's), so relief rising towards the
+  camera keeps its tiles at the screen's near edge; the view's range rather than each tile's, which flipped the
+  cover every frame. The mesh's fallback matrix, which the globe blends to between zoom 11 and 12, is the flat
+  map's tile matrix (`PaintParameters::projectionDataForTile(...).fallbackMatrix`; `matrixForTile` is the
+  sphere's on the globe).
 - With terrain, covers vary their zoom with the distance from the camera (`TileLodMode::Adaptive`, as GL JS
   does), and the mesh's tile cap keeps the tiles nearest the camera.
 - For the app's custom layers: the terrain's heights (`CustomLayerRenderParameters::terrainElevation`, iOS
