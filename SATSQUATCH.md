@@ -26,7 +26,11 @@ MapLibre React Native). Neither upstream release has both.
   again).
 - Shaders keep the globe's projection (`projectTile`, `ProjectionUBO`) and add the terrain's:
   - draped layers (background, fill*, line*, raster, hillshade, color-relief) apply
-    `apply_drape_transform` after `projectTile`;
+    `apply_drape_transform` after `projectTile` (Metal's line shaders in their globe branch too);
+  - in a drape target the tile clipping masks are placed as the drape places the tiles
+    (`PaintParameters::globeClipMasks`: the globe's own masks are the screen's), in a stencil the pass
+    clears (Metal's render pass honours `clearStencil`; the simulator's combined depth/stencil texture is the
+    drape target's stencil too, as a device's separate one is);
   - `LayerTweaker::getProjectionData` takes the drape flag (off by default; those layers' tweakers ask
     for it), so while draping the ProjectionUBO and the drawable's `matrix` are the drape target's;
   - circles and symbols take the terrain's elevation where the globe had 0 (0 on the globe).

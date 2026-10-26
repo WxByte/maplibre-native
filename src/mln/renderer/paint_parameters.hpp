@@ -158,6 +158,10 @@ public:
     /// target, or moving between drape targets (see clipMatrixForTile).
     void invalidateTileClippingMasks() { tileClippingMaskIDs.clear(); }
 
+    /// Tile clipping masks follow the tiles: on the globe's screen, or placed in a terrain drape target as on the
+    /// flat map (clipMatrixForTile), where the drape draws them without the globe's projection
+    bool globeClipMasks() const { return state.isGlobeRendering() && currentDrapeTile[3] == 0.0f; }
+
     /// @brief Get a stencil mode for rendering constrined to the specified tile ID.
     /// The tile ID must have been present in the set previously passed to `renderTileClippingMasks`
     gfx::StencilMode stencilModeForClipping(const UnwrappedTileID&) const;

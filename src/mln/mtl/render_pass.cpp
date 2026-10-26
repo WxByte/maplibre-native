@@ -30,6 +30,15 @@ RenderPass::RenderPass(CommandEncoder& commandEncoder_, const char* name, const 
                     }
                 }
             }
+            // A stencil attachment's default load action leaves it undefined (SatSquatch: a terrain drape target's
+            // clipping masks then matched leftovers on the device)
+            if (descriptor.clearStencil && rpd->stencilAttachment() && rpd->stencilAttachment()->texture()) {
+                if (auto copy = NS::TransferPtr(rpd->copy())) {
+                    copy->stencilAttachment()->setLoadAction(MTL::LoadActionClear);
+                    copy->stencilAttachment()->setClearStencil(static_cast<uint32_t>(*descriptor.clearStencil));
+                    rpd = std::move(copy);
+                }
+            }
             encoder = NS::RetainPtr(cmdBuff->renderCommandEncoder(rpd.get()));
 
             const auto& texture = rpd->colorAttachments()->object(0)->texture();

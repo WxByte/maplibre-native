@@ -297,8 +297,10 @@ FragmentStage vertex vertexMain(thread const VertexStage vertx [[stage_in]],
     const float adjustedThickness = projectLineThickness(pos.y, projectionVector[uboIndex]);
     const float4 projected_no_extrude = projectTile(pos + offset2 / drawable.ratio * adjustedThickness, projectionVector[uboIndex]);
     const float2 extrudedPos = pos + (offset2 + dist) / drawable.ratio * adjustedThickness;
-    const float4 position = projectTile(extrudedPos, projectionVector[uboIndex]);
-    const float4 projected_extrude = position - projected_no_extrude;
+    const float4 projected = projectTile(extrudedPos, projectionVector[uboIndex]);
+    const float4 projected_extrude = projected - projected_no_extrude;
+    // Placed into a terrain drape target as on the flat map (the GL shaders apply it after either branch)
+    const float4 position = apply_drape_transform(projected, drawable.matrix, paintParams.drape_tile);
 #else
     const float4 projected_extrude = drawable.matrix * float4(dist / drawable.ratio, 0.0, 0.0);
     float4 rawPosition = drawable.matrix * float4(pos + offset2 / drawable.ratio, 0.0, 1.0) + projected_extrude;
@@ -498,8 +500,10 @@ FragmentStage vertex vertexMain(thread const VertexStage vertx [[stage_in]],
     const float adjustedThickness = projectLineThickness(pos.y, projectionVector[uboIndex]);
     const float4 projected_no_extrude = projectTile(pos + offset2 / drawable.ratio * adjustedThickness, projectionVector[uboIndex]);
     const float2 extrudedPos = pos + (offset2 + dist) / drawable.ratio * adjustedThickness;
-    const float4 position = projectTile(extrudedPos, projectionVector[uboIndex]);
-    const float4 projected_extrude = position - projected_no_extrude;
+    const float4 projected = projectTile(extrudedPos, projectionVector[uboIndex]);
+    const float4 projected_extrude = projected - projected_no_extrude;
+    // Placed into a terrain drape target as on the flat map (the GL shaders apply it after either branch)
+    const float4 position = apply_drape_transform(projected, drawable.matrix, paintParams.drape_tile);
 #else
     const float4 projected_extrude = drawable.matrix * float4(dist / drawable.ratio, 0.0, 0.0);
     float4 rawPosition = drawable.matrix * float4(pos + offset2 / drawable.ratio, 0.0, 1.0) + projected_extrude;
@@ -709,8 +713,10 @@ FragmentStage vertex vertexMain(thread const VertexStage vertx [[stage_in]],
     const float adjustedThickness = projectLineThickness(pos.y, projectionVector[uboIndex]);
     const float4 projected_no_extrude = projectTile(pos + offset2 / drawable.ratio * adjustedThickness, projectionVector[uboIndex]);
     const float2 extrudedPos = pos + (offset2 + dist) / drawable.ratio * adjustedThickness;
-    const float4 position = projectTile(extrudedPos, projectionVector[uboIndex]);
-    const float4 projected_extrude = position - projected_no_extrude;
+    const float4 projected = projectTile(extrudedPos, projectionVector[uboIndex]);
+    const float4 projected_extrude = projected - projected_no_extrude;
+    // Placed into a terrain drape target as on the flat map (the GL shaders apply it after either branch)
+    const float4 position = apply_drape_transform(projected, drawable.matrix, paintParams.drape_tile);
 #else
     const float4 projected_extrude = drawable.matrix * float4(dist / drawable.ratio, 0.0, 0.0);
     float4 rawPosition = drawable.matrix * float4(pos + offset2 / drawable.ratio, 0.0, 1.0) + projected_extrude;
@@ -979,8 +985,10 @@ FragmentStage vertex vertexMain(thread const VertexStage vertx [[stage_in]],
     const float adjustedThickness = projectLineThickness(pos.y, projectionVector[uboIndex]);
     const float4 projected_no_extrude = projectTile(pos + offset2 / drawable.ratio * adjustedThickness, projectionVector[uboIndex]);
     const float2 extrudedPos = pos + (offset2 + dist) / drawable.ratio * adjustedThickness;
-    const float4 position = projectTile(extrudedPos, projectionVector[uboIndex]);
-    const float4 projected_extrude = position - projected_no_extrude;
+    const float4 projected = projectTile(extrudedPos, projectionVector[uboIndex]);
+    const float4 projected_extrude = projected - projected_no_extrude;
+    // Placed into a terrain drape target as on the flat map (the GL shaders apply it after either branch)
+    const float4 position = apply_drape_transform(projected, drawable.matrix, paintParams.drape_tile);
 #else
     const float4 projected_extrude = drawable.matrix * float4(dist / drawable.ratio, 0.0, 0.0);
     float4 rawPosition = drawable.matrix * float4(pos + offset2 / drawable.ratio, 0.0, 1.0) + projected_extrude;

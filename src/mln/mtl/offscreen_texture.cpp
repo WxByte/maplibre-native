@@ -52,6 +52,12 @@ public:
             static_cast<Texture2D*>(stencilTexture.get())
                 ->setUsage(MTL::TextureUsageShaderRead | MTL::TextureUsageShaderWrite | MTL::TextureUsageRenderTarget);
         }
+#else
+        // ...which serves as the stencil attachment too: a combined format's stencil is used only when the pass
+        // attaches it as both (SatSquatch: else the simulator's drape targets had no stencil, unlike a device's)
+        if (stencil && depthTexture) {
+            stencilTexture = depthTexture;
+        }
 #endif
 
         context.renderingStats().numFrameBuffers++;

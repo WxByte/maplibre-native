@@ -232,7 +232,7 @@ void PaintParameters::clearStencil() {
     const auto debugGroup = renderPass->createDebugGroup("tile-clip-mask-clear");
 #endif
 
-    if (state.isGlobeRendering()) {
+    if (globeClipMasks()) {
         const std::vector<gfx::GlobeClipMask> masks = {
             {.projection = LayerTweaker::toProjectionUBO(projectionDataForTile({0, 0, 0})),
              .stencilRef = 0,
@@ -240,7 +240,7 @@ void PaintParameters::clearStencil() {
         mtlContext.renderGlobeTileClippingMasks(*renderPass, staticData, masks);
     } else {
         const std::vector<shaders::ClipUBO> tileUBO = {shaders::ClipUBO{
-            .matrix = util::cast<float>(matrixForTile({0, 0, 0})), .stencil_ref = 0, .pad1 = 0, .pad2 = 0, .pad3 = 0}};
+            .matrix = util::cast<float>(clipMatrixForTile({0, 0, 0})), .stencil_ref = 0, .pad1 = 0, .pad2 = 0, .pad3 = 0}};
         mtlContext.renderTileClippingMasks(*renderPass, staticData, tileUBO);
     }
     context.renderingStats().stencilClears++;
@@ -253,7 +253,7 @@ void PaintParameters::clearStencil() {
     // The render pass clears the stencil only where it begins; within it, draw zero over the zoom 0 tile, as Metal
     // does.
     auto& webgpuContext = static_cast<webgpu::Context&>(context);
-    if (state.isGlobeRendering()) {
+    if (globeClipMasks()) {
         const std::vector<gfx::GlobeClipMask> masks = {
             {.projection = LayerTweaker::toProjectionUBO(projectionDataForTile({0, 0, 0})),
              .stencilRef = 0,
@@ -261,7 +261,7 @@ void PaintParameters::clearStencil() {
         webgpuContext.renderGlobeTileClippingMasks(*renderPass, staticData, masks);
     } else {
         const std::vector<shaders::ClipUBO> tileUBO = {shaders::ClipUBO{
-            .matrix = util::cast<float>(matrixForTile({0, 0, 0})), .stencil_ref = 0, .pad1 = 0, .pad2 = 0, .pad3 = 0}};
+            .matrix = util::cast<float>(clipMatrixForTile({0, 0, 0})), .stencil_ref = 0, .pad1 = 0, .pad2 = 0, .pad3 = 0}};
         webgpuContext.renderTileClippingMasks(*renderPass, staticData, tileUBO);
     }
     context.renderingStats().stencilClears++;
@@ -293,7 +293,7 @@ bool PaintParameters::renderTileClippingMasks(const RenderTiles& renderTiles) {
     }
 
 #if MLN_RENDER_BACKEND_WEBGPU
-    const bool globe = state.isGlobeRendering();
+    const bool globe = globeClipMasks();
     std::vector<shaders::ClipUBO> tileUBOs;
     std::vector<gfx::GlobeClipMask> globeMasks;
     for (const auto& tileRef : *renderTiles) {
@@ -340,7 +340,7 @@ bool PaintParameters::renderTileClippingMasks(const RenderTiles& renderTiles) {
     }
 #elif MLN_RENDER_BACKEND_METAL
     // Assign a stencil ID and build a UBO for each tile in the set
-    const bool globe = state.isGlobeRendering();
+    const bool globe = globeClipMasks();
     std::vector<shaders::ClipUBO> tileUBOs;
     std::vector<gfx::GlobeClipMask> globeMasks;
     for (const auto& tileRef : *renderTiles) {
@@ -391,7 +391,7 @@ bool PaintParameters::renderTileClippingMasks(const RenderTiles& renderTiles) {
 
 #elif MLN_RENDER_BACKEND_VULKAN
 
-    const bool globe = state.isGlobeRendering();
+    const bool globe = globeClipMasks();
     std::vector<shaders::ClipUBO> tileUBOs;
     std::vector<gfx::GlobeClipMask> globeMasks;
     for (const auto& tileRef : *renderTiles) {
@@ -436,7 +436,7 @@ bool PaintParameters::renderTileClippingMasks(const RenderTiles& renderTiles) {
     }
 
 #elif MLN_RENDER_BACKEND_OPENGL
-    if (state.isGlobeRendering()) {
+    if (globeClipMasks()) {
         std::vector<gfx::GlobeClipMask> globeMasks;
         for (const auto& tileRef : *renderTiles) {
             const auto& tileID = tileRef.get().id;
