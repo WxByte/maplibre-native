@@ -265,7 +265,7 @@ void Renderer::Impl::render(const RenderTree& renderTree, const std::shared_ptr<
         terrain->prepareSource(orchestrator);
         const std::set<UnwrappedTileID> demTileIDs = terrain->computeMeshCover(state, updateParameters);
         for (const auto& id : demTileIDs) {
-            texturePool.createRenderTarget(context, id, renderTreeParameters.backgroundColor);
+            texturePool.createRenderTarget(context, id, renderTreeParameters.backgroundColor, state.isGlobeRendering());
         }
         texturePool.removeStaleRenderTargets(demTileIDs);
         frameDrapeTargetCount = demTileIDs.size();
@@ -428,8 +428,10 @@ void Renderer::Impl::render(const RenderTree& renderTree, const std::shared_ptr<
                         return;
                     }
                     std::size_t sig = 0;
-                    for (const auto& [tile, h] : drapedTiles) {
-                        if (tile == *tid || tile.isChildOf(*tid) || tid->isChildOf(tile)) {
+                    const auto target = RenderTarget::drapeTile(*tid, state.isGlobeRendering());
+                    for (const auto& [drapedTile, h] : drapedTiles) {
+                        const auto tile = RenderTarget::drapeTile(drapedTile, state.isGlobeRendering());
+                        if (tile == target || tile.isChildOf(target) || target.isChildOf(tile)) {
                             sig += h;
                         }
                     }

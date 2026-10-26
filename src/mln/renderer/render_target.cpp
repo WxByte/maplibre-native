@@ -90,11 +90,13 @@ void RenderTarget::upload(gfx::UploadPass& uploadPass) {
     visitLayerGroups(([&](LayerGroupBase& layerGroup) { layerGroup.upload(uploadPass); }));
 }
 
-void RenderTarget::setDrapeTileID(const UnwrappedTileID& id) {
+void RenderTarget::setDrapeTileID(const UnwrappedTileID& id, bool globe) {
     drapeTileID = id;
+    drapeGlobe = globe;
+    const auto placed = drapeTile(id, globe);
     const auto z = static_cast<float>(id.canonical.z);
     drapeTileValues = {z,
-                       static_cast<float>(id.canonical.x) + static_cast<float>(id.wrap) * std::exp2(z),
+                       static_cast<float>(id.canonical.x) + static_cast<float>(placed.wrap) * std::exp2(z),
                        static_cast<float>(id.canonical.y),
                        1.0f};
 }
@@ -134,13 +136,13 @@ RenderTarget::DrapeCoverage RenderTarget::computeDrapeCoverage(RenderOrchestrato
         coverage.totalGroups++;
         bool haveExactOrDescendant = false;
         std::optional<UnwrappedTileID> bestAncestor;
+        const UnwrappedTileID target = drapeTile(*drapeTileID, drapeGlobe);
         static_cast<TileLayerGroup&>(layerGroup).visitDrawables([&](const gfx::Drawable& drawable) {
             if (!drawable.getEnabled() || !drawable.getTileID()) {
                 return;
             }
-            const UnwrappedTileID unwrapped = drawable.getTileID()->toUnwrapped();
-            const bool overlaps = unwrapped == *drapeTileID || unwrapped.isChildOf(*drapeTileID) ||
-                                  drapeTileID->isChildOf(unwrapped);
+            const UnwrappedTileID unwrapped = drapeTile(drawable.getTileID()->toUnwrapped(), drapeGlobe);
+            const bool overlaps = unwrapped == target || unwrapped.isChildOf(target) || target.isChildOf(unwrapped);
             if (overlaps) {
                 // Key on the COVERING TILE id, NOT the drawable-instance id. A tile's
                 // drawables are rebuilt with fresh ids on every bucket update, fade
@@ -159,9 +161,9 @@ RenderTarget::DrapeCoverage RenderTarget::computeDrapeCoverage(RenderOrchestrato
                 util::hash_combine(tileHash, unwrapped.canonical.y);
                 coverage.contentHash += tileHash;
             }
-            if (unwrapped == *drapeTileID || unwrapped.isChildOf(*drapeTileID)) {
+            if (unwrapped == target || unwrapped.isChildOf(target)) {
                 haveExactOrDescendant = true;
-            } else if (drapeTileID->isChildOf(unwrapped)) {
+            } else if (target.isChildOf(unwrapped)) {
                 if (!bestAncestor || unwrapped.canonical.z > bestAncestor->canonical.z) {
                     bestAncestor = unwrapped;
                 }
@@ -229,14 +231,14 @@ void RenderTarget::renderDrapedLayerGroups(RenderOrchestrator& orchestrator, Pai
     // targets carry a stencil attachment for this, and the masks are built with
     // the drape placement by PaintParameters::clipMatrixForTile.
     std::vector<std::pair<gfx::Drawable*, bool>> savedEnabled;
+    const UnwrappedTileID target = drapeTile(*drapeTileID, drapeGlobe);
     visitDrapedGroups(visitForward, [&](LayerGroupBase& layerGroup) {
         static_cast<TileLayerGroup&>(layerGroup).visitDrawables([&](gfx::Drawable& drawable) {
             savedEnabled.emplace_back(&drawable, drawable.getEnabled());
             bool overlaps = false;
             if (const auto& tileID = drawable.getTileID()) {
-                const UnwrappedTileID unwrapped = tileID->toUnwrapped();
-                overlaps = unwrapped == *drapeTileID || unwrapped.isChildOf(*drapeTileID) ||
-                           drapeTileID->isChildOf(unwrapped);
+                const UnwrappedTileID unwrapped = drapeTile(tileID->toUnwrapped(), drapeGlobe);
+                overlaps = unwrapped == target || unwrapped.isChildOf(target) || target.isChildOf(unwrapped);
             }
             drawable.setEnabled(drawable.getEnabled() && overlaps);
         });

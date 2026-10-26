@@ -3,6 +3,7 @@
 #include <mln/gfx/drawable.hpp>
 
 #include <mln/map/transform_state.hpp>
+#include <mln/renderer/render_target.hpp>
 #include <mln/renderer/render_tree.hpp>
 #include <mln/renderer/render_tile.hpp>
 #include <mln/shaders/layer_ubo.hpp>
@@ -67,11 +68,12 @@ mat4 LayerTweaker::getTileMatrix(const UnwrappedTileID& tileID,
 #endif
         // Draped 2D geometry multiplies vec4(x, y, 0, 1), so the matrix's third
         // column never contributes to the transform; carry the drawable's tile
-        // (z, x, y — x including the wrap) there for apply_drape_transform,
-        // which pairs it with the target tile in GlobalPaintParamsUBO::drape_tile.
+        // (z, x, y — x including the wrap, but on the globe: RenderTarget::drapeTile) there for
+        // apply_drape_transform, which pairs it with the target tile in GlobalPaintParamsUBO::drape_tile.
         const double z = tileID.canonical.z;
         terrainRttPosMatrix[8] = z;
-        terrainRttPosMatrix[9] = tileID.canonical.x + tileID.wrap * std::exp2(z);
+        terrainRttPosMatrix[9] = tileID.canonical.x +
+                                 RenderTarget::drapeTile(tileID, parameters.state.isGlobeRendering()).wrap * std::exp2(z);
         terrainRttPosMatrix[10] = tileID.canonical.y;
         return terrainRttPosMatrix;
     }

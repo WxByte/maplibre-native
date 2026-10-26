@@ -79,15 +79,19 @@ FragmentStage vertex vertexMain(thread const VertexStage vertx [[stage_in]],
 
     // The mesh was generated with coordinates from 0 to EXTENT (8192)
     float2 pos = float2(vertx.pos.xy);
-    float2 uv = pos / 8192.0;
+    // A polar cap's pole vertex (SatSquatch: on the globe, past the top and bottom tile rows): the edge row's
+    // drape, at sea level
+    const float2 tilePos = clamp(pos, 0.0, 8192.0);
+    float2 uv = tilePos / 8192.0;
 
     // Decode the DEM and interpolate in meters via the shared helper (the packed
     // Terrain-RGB/Terrarium DEM cannot be hardware-filtered, so it is sampled
     // NEAREST and interpolated after decoding, matching maplibre-gl-js and the
     // elevated layers). Map into the bound DEM tile; an ancestor tile is bound as
     // a fallback while this tile's own DEM loads. dem_coords.w = DEM dimension.
-    float elevation = get_elevation(pos, demTexture, demSampler, drawable.dem_coords, props.unpack,
-                                    drawable.dem_coords.w, props.exaggeration, 1.0);
+    float elevation = pos.y != tilePos.y ? 0.0 : get_elevation(pos, demTexture, demSampler, drawable.dem_coords,
+                                                               props.unpack, drawable.dem_coords.w,
+                                                               props.exaggeration, 1.0);
 
     // Skirt vertices hang below the surface by elevation_offset, forming a curtain
     // that hides the cracks between neighbouring tiles at different zoom levels

@@ -363,10 +363,9 @@ void Map::Impl::onDidFinishRenderingMap() {
 };
 
 bool Map::Impl::terrainShown() const {
-    // On the globe from GLOBE_TERRAIN_MIN_ZOOM up (SatSquatch): the whole planet's view has no relief to see,
-    // and keeps the plain globe (with its poles, which the terrain's tiles stop short of).
-    const TransformState& state = transform.getState();
-    return style->impl->getTerrain() && (!state.isGlobeRendering() || state.getZoom() >= util::GLOBE_TERRAIN_MIN_ZOOM);
+    // At every zoom, on the globe too (SatSquatch): its tiles in the top and bottom rows cover the poles
+    // (RenderTerrain::createDrawableForTile).
+    return style->impl->getTerrain() != nullptr;
 }
 
 bool Map::Impl::terrainAnchorsCamera() const {

@@ -6,6 +6,7 @@
 #include <mln/map/transform_state.hpp>
 #include <mln/renderer/layer_tweaker.hpp>
 #include <mln/renderer/render_static_data.hpp>
+#include <mln/renderer/render_target.hpp>
 #include <mln/renderer/render_source.hpp>
 #include <mln/renderer/render_tile.hpp>
 #include <mln/renderer/update_parameters.hpp>
@@ -138,7 +139,7 @@ mat4 PaintParameters::clipMatrixForTile(const UnwrappedTileID& tileID) const {
     // Then the placement apply_drape_transform performs in the vertex shader, evaluated
     // here instead. Keep this in sync with _prelude.vertex.glsl.
     const double z = tileID.canonical.z;
-    const double x = tileID.canonical.x + tileID.wrap * std::exp2(z);
+    const double x = tileID.canonical.x + RenderTarget::drapeTile(tileID, state.isGlobeRendering()).wrap * std::exp2(z);
     const double y = tileID.canonical.y;
     const double k = currentDrapeTile[0] - z;
     const double scale = std::exp2(k);

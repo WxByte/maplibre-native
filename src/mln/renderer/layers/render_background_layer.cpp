@@ -10,6 +10,7 @@
 #include <mln/renderer/pattern_atlas.hpp>
 #include <mln/renderer/render_pass.hpp>
 #include <mln/renderer/render_static_data.hpp>
+#include <mln/renderer/render_terrain.hpp>
 #include <mln/renderer/upload_parameters.hpp>
 #include <mln/style/layers/background_layer_impl.hpp>
 #include <mln/style/layer_properties.hpp>
@@ -118,19 +119,30 @@ void RenderBackgroundLayer::update(gfx::ShaderRegistry& shaders,
                                    gfx::Context& context,
                                    const TransformState& state,
                                    const std::shared_ptr<UpdateParameters>& updateParameters,
-                                   [[maybe_unused]] const PaintParameters& paintParameters,
+                                   const PaintParameters& paintParameters,
                                    [[maybe_unused]] const RenderTree& renderTree,
                                    [[maybe_unused]] UniqueChangeRequestVec& changes) {
     assert(updateParameters);
     const auto zoom = state.getIntegerZoom();
     Range<uint8_t> zoomRange(0, zoom);
-    const auto tileCover = util::tileCover({.transformState = state,
-                                            .tileLodMinRadius = updateParameters->tileLodMinRadius,
-                                            .tileLodScale = updateParameters->tileLodScale,
-                                            .tileLodPitchThreshold = updateParameters->tileLodPitchThreshold,
-                                            .tileLodMode = updateParameters->tileLodMode},
-                                           zoom,
-                                           zoomRange);
+    auto tileCover = util::tileCover({.transformState = state,
+                                      .tileLodMinRadius = updateParameters->tileLodMinRadius,
+                                      .tileLodScale = updateParameters->tileLodScale,
+                                      .tileLodPitchThreshold = updateParameters->tileLodPitchThreshold,
+                                      .tileLodMode = updateParameters->tileLodMode},
+                                     zoom,
+                                     zoomRange);
+    // With 3D terrain the background drapes into every terrain tile, as GL JS draws it into each render-to-texture
+    // tile (SatSquatch): the terrain's cover can hold tiles the view's doesn't (its elevation-aware test, a pole's
+    // cap), whose drape would otherwise keep its black clear colour.
+    if (paintParameters.terrain && paintParameters.terrain->getFrameMeshCover()) {
+        for (const auto& id : *paintParameters.terrain->getFrameMeshCover()) {
+            const OverscaledTileID tile(id.canonical.z, id.wrap, id.canonical);
+            if (std::ranges::find(tileCover, tile) == tileCover.end()) {
+                tileCover.push_back(tile);
+            }
+        }
+    }
 
     // renderTiles is always empty, we use tileCover instead
     if (tileCover.empty()) {

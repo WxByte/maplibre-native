@@ -31,15 +31,18 @@ uniform sampler2D u_dem;
 void main() {
     // The mesh was generated with coordinates from 0 to EXTENT (8192)
     vec2 pos = a_pos.xy;
-    v_uv = pos / 8192.0;
+    // A polar cap's pole vertex (SatSquatch: on the globe, past the top and bottom tile rows): the edge row's
+    // drape, at sea level
+    vec2 tilePos = clamp(pos, 0.0, 8192.0);
+    v_uv = tilePos / 8192.0;
 
     // Decode the DEM and interpolate in meters via the shared prelude helper
     // (the packed Terrain-RGB/Terrarium DEM cannot be hardware-filtered, so it is
     // sampled NEAREST and interpolated after decoding, matching maplibre-gl-js and
     // the elevated layers). Map into the bound DEM tile; an ancestor tile is bound
     // as a fallback while this tile's own DEM loads. dem_coords.w = DEM dimension.
-    v_elevation = get_elevation(pos, u_dem, u_dem_tile_coords, u_unpack,
-                                u_dem_tile_coords.w, u_exaggeration, 1.0);
+    v_elevation = pos.y != tilePos.y ? 0.0 : get_elevation(pos, u_dem, u_dem_tile_coords, u_unpack,
+                                                            u_dem_tile_coords.w, u_exaggeration, 1.0);
 
     // Skirt vertices hang below the surface by u_elevation_offset, forming a
     // curtain that hides the cracks between neighbouring tiles at different zoom

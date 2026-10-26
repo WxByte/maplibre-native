@@ -49,8 +49,14 @@ public:
     /// Mark this render target as a terrain drape target for the given tile.
     /// Drape targets render the orchestrator's draped tile layer groups
     /// (filtered to overlapping tiles) instead of their own layer groups.
-    void setDrapeTileID(const UnwrappedTileID& id);
+    void setDrapeTileID(const UnwrappedTileID& id, bool globe = false);
     const std::optional<UnwrappedTileID>& getDrapeTileID() const { return drapeTileID; }
+
+    /// A tile as draping matches and places it: on the globe every world copy of a tile is the same place, so the
+    /// wrap is left out (covers can give a tile and its parent different wraps on the far side; SatSquatch)
+    static UnwrappedTileID drapeTile(const UnwrappedTileID& id, bool globe) {
+        return globe ? UnwrappedTileID(0, id.canonical) : id;
+    }
 
     /// Refresh this drape target's copy of the global paint parameters,
     /// carrying the target tile in `drape_tile` (no-op for non-drape targets)
@@ -162,6 +168,8 @@ protected:
     LayerGroupMap layerGroupsByLayerIndex;
     Color backgroundColor;
     std::optional<UnwrappedTileID> drapeTileID;
+    // Drawn on the globe: tiles are matched and placed without their wrap (drapeTile)
+    bool drapeGlobe = false;
     // (z, x including wrap, y, 1) of the drape tile, as consumed by
     // apply_drape_transform; w = 1 marks an active drape target
     std::array<float, 4> drapeTileValues{{0, 0, 0, 0}};

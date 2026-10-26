@@ -1,5 +1,6 @@
 #include <mln/gfx/drawable_custom_layer_host_tweaker.hpp>
 #include <mln/renderer/paint_parameters.hpp>
+#include <mln/renderer/render_target.hpp>
 #include <mln/gfx/renderer_backend.hpp>
 #include <mln/gfx/renderable.hpp>
 
@@ -58,8 +59,7 @@ void DrawableCustomLayerHostTweaker::execute([[maybe_unused]] gfx::Drawable& dra
     context.bindGlobalUniformBuffers(*paintParameters.renderPass);
 }
 
-void DrawableCustomLayerDrapeTweaker::execute([[maybe_unused]] gfx::Drawable& drawable,
-                                              mln::PaintParameters& paintParameters) {
+void DrawableCustomLayerDrapeTweaker::execute(gfx::Drawable& drawable, mln::PaintParameters& paintParameters) {
     // The drape target being rendered: {z, x with its world copy, y}
     const auto& target = paintParameters.currentDrapeTile;
     if (target[3] == 0) {
@@ -69,6 +69,19 @@ void DrawableCustomLayerDrapeTweaker::execute([[maybe_unused]] gfx::Drawable& dr
     const double n = std::exp2(static_cast<double>(z));
     const double gx = target[1];
     const double y = target[2];
+
+    // Only the target's own drawable draws: the host draws the whole target, and the drawables of the cover's tiles
+    // that overlap it (the flat map's dilated cover holds a tile's ancestors and descendants too) would draw it
+    // again, compounding a translucent layer
+    const auto& tileID = drawable.getTileID();
+    if (!tileID) {
+        return;
+    }
+    const auto own = RenderTarget::drapeTile(tileID->toUnwrapped(), paintParameters.state.isGlobeRendering());
+    if (own.canonical.z != z || own.canonical.y != y ||
+        static_cast<double>(own.canonical.x) + static_cast<double>(own.wrap) * n != gx) {
+        return;
+    }
 
     // Flat into the tile's texture, with no depth or stencil test (as the 2D draped layers)
     auto& context = paintParameters.context;

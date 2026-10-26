@@ -38,6 +38,7 @@
 #include <mln/util/constants.hpp>
 #include <mln/util/geo.hpp>
 #include <mln/util/projection.hpp>
+#include <mln/util/subdivision.hpp>
 #include <mln/math/angles.hpp>
 #include <mln/util/logging.hpp>
 #include <mln/util/image.hpp>
@@ -183,7 +184,7 @@ void RenderTerrain::update(RenderOrchestrator& orchestrator,
     }
 
     // On the globe the mesh is drawn on the sphere (its shader's globe variant), so a change of projection drops
-    // the tile drawables; the relief fades in over the globe's first terrain zooms.
+    // the tile drawables (the top and bottom rows' polar caps with them).
     const auto variant = state.isGlobeRendering() ? gfx::ProjectionVariant::Globe : gfx::ProjectionVariant::Mercator;
     if (variant != meshVariant) {
         meshVariant = variant;
@@ -195,15 +196,6 @@ void RenderTerrain::update(RenderOrchestrator& orchestrator,
             depthDirty = true;
         }
         tilesWithDrawables.clear();
-    }
-    if (state.isGlobeRendering()) {
-        const double t = std::clamp((state.getZoom() - util::GLOBE_TERRAIN_MIN_ZOOM) /
-                                        (util::GLOBE_TERRAIN_FULL_ZOOM - util::GLOBE_TERRAIN_MIN_ZOOM),
-                                    0.0,
-                                    1.0);
-        exaggerationScale = static_cast<float>(t * t * (3.0 - 2.0 * t));
-    } else {
-        exaggerationScale = 1.0f;
     }
 
     // The skirts are baked into the shared mesh, so a change of setting has to drop the mesh
@@ -911,7 +903,7 @@ const std::shared_ptr<gfx::Texture2D>& RenderTerrain::getDepthTexture(gfx::Conte
 }
 
 float RenderTerrain::getExaggeration() const {
-    return impl->exaggeration * exaggerationScale;
+    return impl->exaggeration;
 }
 
 const std::string& RenderTerrain::getSourceID() const {
@@ -1141,20 +1133,55 @@ std::unique_ptr<gfx::Drawable> RenderTerrain::createDrawableForTile(gfx::Context
         builder->setIs3D(true);
     }
 
+    std::vector<int16_t> vertices = terrainMesh.vertices;
+    std::vector<uint16_t> indexData = terrainMesh.indices;
+    // On the globe a tile in the top or bottom row also covers the polar cap past it, as the plain globe's tiles
+    // do (SatSquatch): its edge row joined to the pole (the shaders' pole sentinel, util::subdivision's), where
+    // the shader puts sea level and the edge row's drape.
+    const auto addPoleCap = [&](bool north) {
+        constexpr size_t vps = MESH_SIZE + 1;
+        const auto edgeRow = static_cast<uint16_t>(north ? 0 : vps * MESH_SIZE);
+        const auto poleRow = static_cast<uint16_t>(vertices.size() / 4);
+        const float step = static_cast<float>(util::EXTENT) / static_cast<float>(MESH_SIZE);
+        for (size_t x = 0; x < vps; ++x) {
+            vertices.insert(vertices.end(),
+                            {static_cast<int16_t>(static_cast<float>(x) * step),
+                             north ? util::NORTH_POLE_Y : util::SOUTH_POLE_Y,
+                             0,
+                             0});
+        }
+        // wound as the skirts' rows on the same edges
+        for (uint16_t x = 0; x < MESH_SIZE; ++x) {
+            const auto e0 = static_cast<uint16_t>(edgeRow + x), e1 = static_cast<uint16_t>(e0 + 1);
+            const auto p0 = static_cast<uint16_t>(poleRow + x), p1 = static_cast<uint16_t>(p0 + 1);
+            if (north) {
+                indexData.insert(indexData.end(), {e0, p1, p0, e0, e1, p1});
+            } else {
+                indexData.insert(indexData.end(), {e0, p0, p1, e0, p1, e1});
+            }
+        }
+    };
+    if (!depthPass && isGlobe()) {
+        const uint32_t lastRow = (1u << tileID.canonical.z) - 1;
+        if (tileID.canonical.y == 0) addPoleCap(true);
+        if (tileID.canonical.y == lastRow) addPoleCap(false);
+    }
+    const std::size_t vertexCount = vertices.size() / 4;
+    const std::size_t indexCount = indexData.size();
+
     // Set vertex data - copy vertices to raw buffer
-    std::vector<uint8_t> vertexData(terrainMesh.vertices.size() * sizeof(int16_t));
-    std::memcpy(vertexData.data(), terrainMesh.vertices.data(), vertexData.size());
-    builder->setRawVertices(std::move(vertexData), terrainMesh.vertexCount, gfx::AttributeDataType::Short4);
+    std::vector<uint8_t> vertexData(vertices.size() * sizeof(int16_t));
+    std::memcpy(vertexData.data(), vertices.data(), vertexData.size());
+    builder->setRawVertices(std::move(vertexData), vertexCount, gfx::AttributeDataType::Short4);
 
     // Set index data and segments
     // Create a single segment covering the entire terrain mesh
     SegmentVector segments;
-    segments.emplace_back(0,                       // vertex offset
-                          0,                       // index offset
-                          terrainMesh.vertexCount, // vertex count
-                          terrainMesh.indexCount); // index count
+    segments.emplace_back(0,           // vertex offset
+                          0,           // index offset
+                          vertexCount, // vertex count
+                          indexCount); // index count
 
-    std::vector<uint16_t> indexData = terrainMesh.indices;
     builder->setSegments(gfx::Triangles(), std::move(indexData), segments.data(), segments.size());
 
     // Set the DEM texture

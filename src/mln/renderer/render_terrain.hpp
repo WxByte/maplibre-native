@@ -182,8 +182,7 @@ public:
     std::vector<double> queryElevations(const std::vector<LatLng>& latLngs) const;
 
     /**
-     * @brief Get the terrain exaggeration multiplier: the style's, faded in on the globe
-     * (GLOBE_TERRAIN_MIN_ZOOM to GLOBE_TERRAIN_FULL_ZOOM; SatSquatch)
+     * @brief Get the terrain exaggeration multiplier
      */
     float getExaggeration() const;
 
@@ -340,7 +339,6 @@ private:
     TerrainSkirtLength meshSkirtLength = TerrainSkirtLength::Auto;
     // The projection the tile drawables' shader was built for, and the globe's fade of the exaggeration.
     gfx::ProjectionVariant meshVariant = gfx::ProjectionVariant::Mercator;
-    float exaggerationScale = 1.0f;
 
     // Layer group for terrain drawables
     LayerGroupBasePtr layerGroup;
