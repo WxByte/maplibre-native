@@ -658,12 +658,11 @@ std::vector<OverscaledTileID> tileCover(const TileCoverParameters& state,
     const double requestedCenterZoom = transform.getZoom() + (unclampedZ - std::floor(transform.getZoom()));
     const util::TileZoomFunction tileZoom(util::rad2deg(transform.getFieldOfView()));
 
-    // Elevation has to reach the frustum in the aabb's units (tiles at zoom z).
-    // Renderable heights are in meters and Camera::getWorldToCamera scales them by
-    // pixelsPerMeter = worldSize / (cos(lat) * 2pi * R); pixels are then tiles at
-    // zoom z scaled by numTiles / worldSize, so worldSize cancels out.
-    const double metersToTileUnits = numTiles / (std::cos(util::deg2rad(transform.getLatLng().latitude())) *
-                                                 util::M2PI * util::EARTH_RADIUS_M);
+    // Elevation has to reach the frustum in its units. Its corners are the inverse projection's world points, whose z
+    // is in meters (Camera::getWorldToCamera scales meters by pixelsPerMeter on the way in), and Frustum scales every
+    // axis by numTiles / worldSize (SatSquatch: the meters were taken by pixelsPerMeter a second time, which shrank
+    // the relief to a twentieth at zoom 11, and the tiles it raises into view at the screen's near edge were culled).
+    const double metersToTileUnits = numTiles / worldSize;
 
     // The tile's bounds including its terrain: the flat footprint given the height of
     // the DEM covering it. Relief rising towards the camera takes up screen space that
@@ -833,9 +832,8 @@ std::set<UnwrappedTileID> frustumCull(const TileCoverParameters& state, const st
     const double numTiles = std::exp2(static_cast<double>(refZ));
     const double worldSize = Projection::worldSize(transform.getScale());
     const Frustum frustum = Frustum::fromInvProjMatrix(transform.getInvProjectionMatrix(), worldSize, refZ, flippedY);
-    // Meters to tile-units at refZ; see the same conversion in tileCover.
-    const double metersToTileUnits = numTiles / (std::cos(util::deg2rad(transform.getLatLng().latitude())) *
-                                                 util::M2PI * util::EARTH_RADIUS_M);
+    // Meters to the frustum's units at refZ; see the same conversion in tileCover.
+    const double metersToTileUnits = numTiles / worldSize;
 
     std::set<UnwrappedTileID> result;
     for (const auto& id : tiles) {

@@ -22,7 +22,9 @@ MapLibre React Native). Neither upstream release has both.
   map's tile matrix (`PaintParameters::projectionDataForTile(...).fallbackMatrix`; `matrixForTile` is the
   sphere's on the globe).
 - With terrain, covers vary their zoom with the distance from the camera (`TileLodMode::Adaptive`, as GL JS
-  does), and the mesh's tile cap keeps the tiles nearest the camera.
+  does), and the mesh's tile cap keeps the tiles nearest the camera. On the flat map a tile's culling box rises by
+  its terrain's height in the frustum's own units (`numTiles / worldSize`: the frustum's z, the inverse
+  projection's, is in meters).
 - For the app's custom layers: the terrain's heights (`CustomLayerRenderParameters::terrainElevation`, iOS
   `MLNMapView terrainElevationsAtCoordinates:`), drawn from the mesh's own DEM cache; with terrain they draw
   in the 3D depth range; and they can drape onto the terrain (`CustomLayerHost::drapeRevision` and
