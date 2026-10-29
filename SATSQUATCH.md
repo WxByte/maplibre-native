@@ -25,6 +25,12 @@ MapLibre React Native). Neither upstream release has both.
   does), and the mesh's tile cap keeps the tiles nearest the camera. On the flat map a tile's culling box rises by
   its terrain's height in the frustum's own units (`numTiles / worldSize`: the frustum's z, the inverse
   projection's, is in meters).
+- A terrain tile's drape redraws when the layers draped into it get new data, not only when their covering tiles
+  change: a layer that drops a tile's drawables while the tile is still in the cover (a GeoJSON source's new data,
+  or a tile now without the layer's features) bumps its group's content revision
+  (`LayerGroupBase::getContentRevision`, `RenderLayer::removeTile`), which the drape's signatures fold in, and a
+  changed revision redraws even what the anti-flicker rule would keep as "worse" (`DrapeCoverage::revisionHash`).
+  Before, a range ring moved to another radar stayed drawn at the old one until the zoom crossed a level.
 - For the app's custom layers: the terrain's heights (`CustomLayerRenderParameters::terrainElevation`, iOS
   `MLNMapView terrainElevationsAtCoordinates:`), drawn from the mesh's own DEM cache; with terrain they draw
   in the 3D depth range; and they can drape onto the terrain (`CustomLayerHost::drapeRevision` and

@@ -154,6 +154,11 @@ std::size_t RenderLayer::removeTile(RenderPass renderPass, const OverscaledTileI
     if (const auto tileGroup = static_cast<TileLayerGroup*>(layerGroup.get())) {
         const auto n = tileGroup->removeDrawables(renderPass, tileID).size();
         stats.drawablesRemoved += n;
+        // A tile still drawn whose drawables go: its content changed (new data, or none of this layer now), not
+        // a tile leaving the cover, so terrain drapes baked from it must redraw (SatSquatch)
+        if (n > 0 && hasRenderTile(tileID)) {
+            tileGroup->bumpContentRevision();
+        }
         return n;
     }
     return 0;

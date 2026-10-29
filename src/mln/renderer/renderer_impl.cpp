@@ -397,6 +397,8 @@ void Renderer::Impl::render(const RenderTree& renderTree, const std::shared_ptr<
                     if (const auto& revision = layerGroup.getDrapeRevision()) {
                         util::hash_combine(h, *revision);
                     }
+                    // ...and a layer's tiles get new data without their ids changing (SatSquatch)
+                    util::hash_combine(h, layerGroup.getContentRevision());
                     util::hash_combine(signature, h);
                     drapedTiles.emplace_back(tile, h);
                 });

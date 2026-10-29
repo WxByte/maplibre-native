@@ -135,6 +135,12 @@ protected:
         /// ids: those are rebuilt with fresh ids every frame during fades/bucket updates, which
         /// churned the signature and re-rendered every drape each frame while panning.
         std::size_t contentHash = 0;
+        /// Each draped layer group's content revision (LayerGroupBase::getContentRevision), summed with its
+        /// layer index: it changes when a layer's tiles get new data, which the covering tile ids above don't
+        /// show (a GeoJSON source's new data keeps them). Such a change always redraws, even when the new
+        /// content is "worse" (a tile that lost its features), since it's not a tile briefly dropping out
+        /// (SatSquatch).
+        std::size_t revisionHash = 0;
         /// Integer tile-zoom (draped UBOs carry zoom-derived values like line ratio);
         /// stored quantized so a pinch within one zoom level does not invalidate the
         /// cache. See computeDrapeCoverage.
@@ -151,7 +157,8 @@ protected:
         /// panning (measured ~4x overdraw / 11fps -> 1x / 44fps once removed). gl-js keys its
         /// terrain RTT cache on tile coverage + zoom, never on paint changes.
         bool sameContentAs(const DrapeCoverage& other) const {
-            return totalGroups == other.totalGroups && contentHash == other.contentHash && zoom == other.zoom;
+            return totalGroups == other.totalGroups && contentHash == other.contentHash &&
+                   revisionHash == other.revisionHash && zoom == other.zoom;
         }
         /// Whether this would draw less than `other`: no layer group improved, and at least one
         /// lost its content or fell back to a coarser ancestor. Compared per group, not summed

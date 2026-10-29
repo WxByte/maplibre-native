@@ -188,6 +188,11 @@ RenderTarget::DrapeCoverage RenderTarget::computeDrapeCoverage(RenderOrchestrato
         if (const auto& revision = layerGroup.getDrapeRevision()) {
             util::hash_combine(coverage.contentHash, *revision);
         }
+        // ...and a layer's tiles get new data without their ids changing (SatSquatch)
+        std::size_t revisionHash = 0;
+        util::hash_combine(revisionHash, layerGroup.getLayerIndex());
+        util::hash_combine(revisionHash, layerGroup.getContentRevision());
+        coverage.revisionHash += revisionHash;
         // Only the coarsest standalone fallback counts as lost detail; when an exact or
         // deeper tile is present the ancestor is clipped away by the tile masks and costs
         // nothing.
@@ -343,7 +348,7 @@ RenderTarget::RenderResult RenderTarget::render(RenderOrchestrator& orchestrator
         // drawable set changing (contentHash) or crossing an integer zoom - is not
         // "worse" and falls through to re-render. The target's lifetime bounds
         // staleness: when its terrain tile leaves the cover it is destroyed.
-        if (coverage.worseThan(bakedCoverage)) {
+        if (coverage.revisionHash == bakedCoverage.revisionHash && coverage.worseThan(bakedCoverage)) {
             // Keeping the already-baked (better) content: record that at this
             // signature the decision was to hold, so future identical frames skip
             // the scan too. A real change (drawable set, zoom, properties) moves the

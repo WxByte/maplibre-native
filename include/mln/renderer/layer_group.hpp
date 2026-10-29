@@ -119,6 +119,12 @@ public:
     const std::optional<uint64_t>& getDrapeRevision() const { return drapeRevision; }
     void setDrapeRevision(std::optional<uint64_t> value) { drapeRevision = value; }
 
+    /// Bumped when a tile still in the cover loses its drawables: its data changed (a GeoJSON source's new data,
+    /// or a tile that now has none of this layer), so a terrain drape baked from it is stale even where the
+    /// covering tiles are the same (SatSquatch). See RenderTarget::DrapeCoverage::revisionHash.
+    uint64_t getContentRevision() const { return contentRevision; }
+    void bumpContentRevision() { ++contentRevision; }
+
     /// Set observer
     void setObserver(gfx::ContextObserver*);
 
@@ -131,6 +137,7 @@ protected:
     bool renderToTerrain;
     gfx::ContextObserver* observer;
     std::optional<uint64_t> drapeRevision;
+    uint64_t contentRevision = 0;
 };
 
 /**
