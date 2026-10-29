@@ -182,6 +182,14 @@ RenderTarget::DrapeCoverage RenderTarget::computeDrapeCoverage(RenderOrchestrato
             util::hash_combine(tileHash, unwrapped.canonical.z);
             util::hash_combine(tileHash, unwrapped.canonical.x);
             util::hash_combine(tileHash, unwrapped.canonical.y);
+            // A GeoJSON source's new data comes in the same tiles (a tile can even leave the cover while it
+            // reloads, which isn't a content change to RenderLayer::removeTile): its bucket says what's in it.
+            // Its buckets change only with its data (SatSquatch)
+            if (layerGroup.hasLocalData()) {
+                if (const auto& bucket = drawable.getBucket()) {
+                    util::hash_combine(tileHash, bucket->getID().id());
+                }
+            }
             coverage.contentHash += tileHash;
         });
         // A draped custom layer's picture changes without its tiles (SatSquatch)
@@ -202,7 +210,7 @@ RenderTarget::DrapeCoverage RenderTarget::computeDrapeCoverage(RenderOrchestrato
         } else if (bestAncestor) {
             deficit = static_cast<int16_t>(drapeTileID->canonical.z - bestAncestor->canonical.z);
         }
-        coverage.groups.push_back({layerGroup.getLayerIndex(), deficit});
+        coverage.groups.push_back({layerGroup.getLayerIndex(), deficit, layerGroup.hasLocalData()});
     });
     return coverage;
 }

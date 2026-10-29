@@ -125,6 +125,11 @@ public:
     uint64_t getContentRevision() const { return contentRevision; }
     void bumpContentRevision() { ++contentRevision; }
 
+    /// Its tiles come from data the app sets (a GeoJSON source): a terrain drape keys its content on their buckets
+    /// and takes less of it as new data, not a tile dropping out (SatSquatch). See RenderTarget::computeDrapeCoverage.
+    bool hasLocalData() const { return localData; }
+    void setLocalData(bool value) { localData = value; }
+
     /// Set observer
     void setObserver(gfx::ContextObserver*);
 
@@ -138,6 +143,7 @@ protected:
     gfx::ContextObserver* observer;
     std::optional<uint64_t> drapeRevision;
     uint64_t contentRevision = 0;
+    bool localData = false;
 };
 
 /**

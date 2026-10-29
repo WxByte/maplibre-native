@@ -75,6 +75,11 @@ void RenderLayer::prepare(const LayerPrepareParameters& params) {
     addRenderPassesFromTiles();
 
     updateRenderTileIDs();
+
+    // GeoJSON tiles come from the app's data: terrain drapes key on their buckets (SatSquatch)
+    if (layerGroup) {
+        layerGroup->setLocalData(params.source->baseImpl->type == style::SourceType::GeoJSON);
+    }
 }
 
 std::optional<Color> RenderLayer::getSolidBackground() const {

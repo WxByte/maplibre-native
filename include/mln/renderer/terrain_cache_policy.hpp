@@ -33,6 +33,10 @@ struct DrapeGroupFallback {
     int32_t layerIndex = 0;
     /// -1 = no usable tile, 0 = exact or deeper tiles, n > 0 = only an ancestor n zoom levels up
     int16_t deficit = -1;
+    /// Its source's tiles come from data the app sets (GeoJSON), not the network: they don't drop
+    /// out while browsing, so less of it is new data (a feature that moved away), never "worse"
+    /// (SatSquatch)
+    bool localData = false;
 };
 
 /// Whether the content a drape target would render now (`now`) is strictly worse than what it
@@ -56,7 +60,7 @@ inline bool drapeFallbackStrictlyWorse(const std::vector<DrapeGroupFallback>& no
         if (n.layerIndex != b.layerIndex) {
             return false;
         }
-        if (n.deficit == b.deficit) {
+        if (n.deficit == b.deficit || n.localData) {
             continue;
         }
         const bool improved = (b.deficit < 0) || (n.deficit >= 0 && n.deficit < b.deficit);

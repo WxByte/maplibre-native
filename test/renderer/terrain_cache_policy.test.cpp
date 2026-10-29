@@ -48,6 +48,16 @@ TEST(TerrainCachePolicy, LosingContentIsWorse) {
     EXPECT_TRUE(drapeFallbackStrictlyWorse(groups({0, -1, 0}), groups({0, 1, 0})));
 }
 
+TEST(TerrainCachePolicy, LocalDataLosingContentIsNotWorse) {
+    // A GeoJSON feature moved off the tile (a radar's range ring to another site): the drape redraws without it
+    auto now = groups({0, -1, 0}), baked = groups({0, 1, 0});
+    now[1].localData = baked[1].localData = true;
+    EXPECT_FALSE(drapeFallbackStrictlyWorse(now, baked));
+    // ...while another group's dropout still counts
+    now[2].deficit = -1;
+    EXPECT_TRUE(drapeFallbackStrictlyWorse(now, baked));
+}
+
 TEST(TerrainCachePolicy, CoarserFallbackIsWorse) {
     EXPECT_TRUE(drapeFallbackStrictlyWorse(groups({0, 3, 0}), groups({0, 1, 0})));
 }
